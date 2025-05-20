@@ -1,8 +1,12 @@
 enum Color:byte { Red = 0, Blue, Green, Purple, Black, Orange, Cyan, Pink = 7}
 
 table Player {
-    x: float32;
-    y: float32;
+    pos_x: float32;
+    pos_y: float32;
+    vel_x: float32;
+    vel_y: float32;
+    acc_x: float32;
+    acc_y: float32;
     color: Color = Red;
 }
 
