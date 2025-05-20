@@ -19,7 +19,7 @@ const GRAVITY: f32 = 1.0;
 const FRICTION: f32 = 1.0;
 const TICK_DURATION: Duration = Duration::from_millis(1);
 const SERVER_ADDR: &str = "127.0.0.1:9000";
-const CLIENT_ADDR: &str = "127.0.0.1:3001";
+// const CLIENT_ADDR: &str = "127.0.0.1:3001";
 const SCALE: f32 = 2.0;
 const PLAYER_SIZE: f32 = 16.0;
 
@@ -64,6 +64,20 @@ fn window_conf() -> Conf {
     }
 }
 
+fn find_available_client_addr(start_port: u16, max_port: u16) -> (String, std::net::UdpSocket) {
+    let ip = "127.0.0.1";
+    for port in start_port..=max_port {
+        let addr = format!("{}:{}", ip, port);
+        match UdpSocket::bind(&addr) {
+            Ok(socket) => {
+                return (addr, socket);
+            }
+            Err(_) => continue,
+        }
+    }
+    panic!("No available ports in range {}-{}", start_port, max_port);
+}
+
 #[macroquad::main(window_conf)]
 async fn main() {
     let mut player = Player1 {
@@ -82,7 +96,8 @@ async fn main() {
         &mut scale,
     );
 
-    let socket = Arc::new(UdpSocket::bind(CLIENT_ADDR).unwrap());
+    let (client_addr, socket) = find_available_client_addr(3001, 3010);
+    let socket = Arc::new(socket);
     let mut players: Arc<Mutex<Vec<OwnedPlayer>>> = Arc::new(Mutex::new(Vec::new()));
     let mut commands: Vec<PlayerCommand> = Vec::new();
 
