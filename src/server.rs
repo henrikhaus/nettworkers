@@ -9,10 +9,12 @@ use std::thread::sleep;
 use std::time::{Duration, Instant};
 
 #[allow(dead_code, unused_imports)]
-#[path = "../schema_generated.rs"]
-mod schema_generated;
-use crate::schema_generated::{Color, PlayerArgs, PlayerCommand, PlayerCommands};
-pub use schema_generated::Player as SchemaPlayer;
+#[path = "../players_list_generated.rs"]
+mod players_list_generated;
+use crate::players_list_generated::{Player as SchemaPlayer, PlayerArgs, Color, PlayersList};
+#[path = "../player_commands_generated.rs"]
+mod player_commands_generated;
+use crate::player_commands_generated::{PlayerCommand, PlayerCommands};
 
 const MAX_PLAYERS: usize = 10;
 const GRAVITY: f32 = 1.0;
@@ -133,8 +135,12 @@ fn tick(
         .iter()
         .map(|p| {
             let args = PlayerArgs {
-                x: p.pos.x,
-                y: p.pos.y,
+                pos_x: p.pos.x,
+                pos_y: p.pos.y,
+                vel_x: 0.0,
+                vel_y: 0.0,
+                acc_x: 0.0,
+                acc_y: 0.0,
                 color: p.color,
             };
             SchemaPlayer::create(&mut builder, &args)
@@ -142,9 +148,9 @@ fn tick(
         .collect();
 
     let players_vec = builder.create_vector(&players_offsets);
-    let players_list = schema_generated::PlayersList::create(
+    let players_list = PlayersList::create(
         &mut builder,
-        &schema_generated::PlayersListArgs {
+        &players_list_generated::PlayersListArgs {
             players: Some(players_vec),
         },
     );
