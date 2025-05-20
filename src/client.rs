@@ -14,30 +14,16 @@ use crate::players_list_generated::{Color, PlayersList};
 mod player_commands_generated;
 use crate::player_commands_generated::{PlayerCommand, PlayerCommands, PlayerCommandsArgs};
 
-const MAX_PLAYERS: usize = 10;
-const GRAVITY: f32 = 1.0;
-const FRICTION: f32 = 1.0;
-const TICK_DURATION: Duration = Duration::from_millis(1);
 const SERVER_ADDR: &str = "127.0.0.1:9000";
 // const CLIENT_ADDR: &str = "127.0.0.1:3001";
-const SCALE: f32 = 2.0;
 const PLAYER_SIZE: f32 = 16.0;
 
-struct Player1 {
+struct ClientPlayer {
     id: Option<usize>,
     pos: Vec2,
     color: Color,
 }
 
-impl Player1 {
-    fn new() -> Player1 {
-        Player1 {
-            id: None,
-            pos: Vec2::ZERO,
-            color: Color::Red,
-        }
-    }
-}
 struct OwnedPlayer {
     x: f32,
     y: f32,
@@ -80,7 +66,7 @@ fn find_available_client_addr(start_port: u16, max_port: u16) -> (String, std::n
 
 #[macroquad::main(window_conf)]
 async fn main() {
-    let mut player = Player1 {
+    let mut player = ClientPlayer {
         id: Some(0),
         pos: Vec2::ZERO,
         color: Color::Red,
@@ -96,9 +82,9 @@ async fn main() {
         &mut scale,
     );
 
-    let (client_addr, socket) = find_available_client_addr(3001, 3010);
+    let (_client_addr, socket) = find_available_client_addr(3001, 3010);
     let socket = Arc::new(socket);
-    let mut players: Arc<Mutex<Vec<OwnedPlayer>>> = Arc::new(Mutex::new(Vec::new()));
+    let players: Arc<Mutex<Vec<OwnedPlayer>>> = Arc::new(Mutex::new(Vec::new()));
     let mut commands: Vec<PlayerCommand> = Vec::new();
 
     let tick_players: Arc<Mutex<Vec<OwnedPlayer>>> = Arc::clone(&players);
@@ -158,9 +144,9 @@ fn handle_packet(packet: &[u8], players: &mut Vec<OwnedPlayer>) {
     }
 }
 
-fn render(player: &Player1, players: &MutexGuard<Vec<OwnedPlayer>>, scale: f32) {
+fn render(player: &ClientPlayer, players: &MutexGuard<Vec<OwnedPlayer>>, scale: f32) {
     clear_background(BLACK);
-    let colors = vec![RED, BLUE, GREEN, PURPLE, ORANGE, BEIGE, PINK];
+    let colors = [RED, BLUE, GREEN, PURPLE, ORANGE, BEIGE, PINK];
     for (index, p) in players.iter().enumerate() {
         draw_rectangle(
             p.x * scale,
