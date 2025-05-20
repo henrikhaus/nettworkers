@@ -118,13 +118,13 @@ async fn main() {
             builder.finish(player_command, None);
             let bytes = builder.finished_data();
             tick_socket
-                .send_to(&bytes, SERVER_ADDR)
+                .send_to(bytes, SERVER_ADDR)
                 .expect("Packet couldn't send.");
         }
         commands.clear();
 
         let players_guard = tick_players.lock().unwrap();
-        render(&player, &players_guard, scale);
+        render(&players_guard, scale);
         drop(players_guard);
         next_frame().await;
     }
@@ -144,7 +144,7 @@ fn handle_packet(packet: &[u8], players: &mut Vec<OwnedPlayer>) {
     }
 }
 
-fn render(player: &ClientPlayer, players: &MutexGuard<Vec<OwnedPlayer>>, scale: f32) {
+fn render(players: &MutexGuard<Vec<OwnedPlayer>>, scale: f32) {
     clear_background(BLACK);
     let colors = [RED, BLUE, GREEN, PURPLE, ORANGE, BEIGE, PINK];
     for (index, p) in players.iter().enumerate() {
