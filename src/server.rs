@@ -7,6 +7,7 @@ use std::sync::{Arc, Mutex};
 use std::thread;
 use std::thread::sleep;
 use std::time::{Duration, Instant};
+
 mod state;
 
 #[allow(dead_code, unused_imports)]
@@ -19,7 +20,7 @@ use crate::game_state_generated::{
 mod player_commands_generated;
 use crate::player_commands_generated::{PlayerCommand, PlayerCommands};
 
-const MAX_PLAYERS: usize = 10;
+const SCENE_NAME: &str = "scene_1";
 const TICK_DURATION: Duration = Duration::from_millis(16);
 const SERVER_ADDR: &str = "127.0.0.1:9000";
 
@@ -82,7 +83,7 @@ impl Server {
                 PlayerSchema::create(
                     &mut builder,
                     &PlayerArgs {
-                        id: p.1.id, 
+                        id: p.1.id,
                         pos: Some(&Vector2::new(p.1.pos.x, p.1.pos.y)),
                         vel: Some(&Vector2::new(p.1.vel.x, p.1.vel.y)),
                         color: p.1.color,
@@ -111,7 +112,7 @@ impl Server {
     fn start_tick_thread(self: &Arc<Self>) {
         println!("Starting tick thread!");
 
-        let mut game_state = GameState::new();
+        let mut game_state = GameState::new(SCENE_NAME);
         let tick_server = Arc::clone(self);
 
         thread::spawn(move || {
@@ -124,7 +125,6 @@ impl Server {
 
                 let ip_to_player_guard = tick_server.ip_to_player_id.lock().unwrap();
 
-                // Let tick only mutate state
                 tick_server.tick(&mut game_state, dt);
                 tick_server.broadcast_state(&game_state, &ip_to_player_guard);
                 drop(ip_to_player_guard);

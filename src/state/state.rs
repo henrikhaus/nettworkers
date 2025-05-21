@@ -1,8 +1,9 @@
-use std::collections::{HashMap, VecDeque};
-
 use super::model::*;
 use super::physics::*;
 use crate::{game_state_generated::Color, player_commands_generated::PlayerCommand};
+use serde::Deserialize;
+use std::collections::{HashMap, VecDeque};
+use std::fs::File;
 
 use super::{JUMP_CD, SCREEN_HEIGHT};
 
@@ -24,12 +25,31 @@ impl PlayerState {
 #[derive(Clone)]
 pub struct GameState {
     pub players: HashMap<u32, PlayerState>,
+    pub collidables: Vec<SceneObject>,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct SceneObject {
+    pub x: f32,
+    pub y: f32,
+    pub w: f32,
+    pub h: f32,
+}
+
+#[derive(Debug, Deserialize)]
+struct Scene {
+    collidables: HashMap<u32, SceneObject>,
 }
 
 impl GameState {
-    pub fn new() -> GameState {
+    pub fn new(scene_name: &str) -> GameState {
+        let file = File::open(format!("src/scenes/{}.json", scene_name)).expect("Scene file must open");
+        let scene: Scene = serde_json::from_reader(file).expect("JSON must match Scene");
+        let collidables: Vec<SceneObject> = scene.collidables.into_values().collect();
+
         GameState {
             players: HashMap::new(),
+            collidables,
         }
     }
 
