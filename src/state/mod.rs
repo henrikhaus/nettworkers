@@ -16,6 +16,6 @@ pub const SCREEN_WIDTH: usize = 640;
 pub const JUMP_CD: f32 = 0.3;
 
 // Physics
-pub const GROUND_FRICTION: f32 = 0.8;
-pub const AIR_FRICTION: f32 = 0.95;
-pub const GRAVITY: f32 = 1000.0;
+pub const GROUND_FRICTION: f32 = 0.0001;
+pub const AIR_FRICTION: f32 = 0.9;
+pub const GRAVITY: f32 = 2500.0;
