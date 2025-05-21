@@ -262,9 +262,9 @@ impl<'a> flatbuffers::Follow<'a> for Player<'a> {
 }
 
 impl<'a> Player<'a> {
-  pub const VT_POS: flatbuffers::VOffsetT = 4;
-  pub const VT_VEL: flatbuffers::VOffsetT = 6;
-  pub const VT_ACC: flatbuffers::VOffsetT = 8;
+  pub const VT_ID: flatbuffers::VOffsetT = 4;
+  pub const VT_POS: flatbuffers::VOffsetT = 6;
+  pub const VT_VEL: flatbuffers::VOffsetT = 8;
   pub const VT_COLOR: flatbuffers::VOffsetT = 10;
 
   #[inline]
@@ -277,14 +277,21 @@ impl<'a> Player<'a> {
     args: &'args PlayerArgs<'args>
   ) -> flatbuffers::WIPOffset<Player<'bldr>> {
     let mut builder = PlayerBuilder::new(_fbb);
-    if let Some(x) = args.acc { builder.add_acc(x); }
     if let Some(x) = args.vel { builder.add_vel(x); }
     if let Some(x) = args.pos { builder.add_pos(x); }
+    builder.add_id(args.id);
     builder.add_color(args.color);
     builder.finish()
   }
 
 
+  #[inline]
+  pub fn id(&self) -> u32 {
+    // Safety:
+    // Created from valid Table for this object
+    // which contains a valid value in this slot
+    unsafe { self._tab.get::<u32>(Player::VT_ID, Some(0)).unwrap()}
+  }
   #[inline]
   pub fn pos(&self) -> Option<&'a Vector2> {
     // Safety:
@@ -298,13 +305,6 @@ impl<'a> Player<'a> {
     // Created from valid Table for this object
     // which contains a valid value in this slot
     unsafe { self._tab.get::<Vector2>(Player::VT_VEL, None)}
-  }
-  #[inline]
-  pub fn acc(&self) -> Option<&'a Vector2> {
-    // Safety:
-    // Created from valid Table for this object
-    // which contains a valid value in this slot
-    unsafe { self._tab.get::<Vector2>(Player::VT_ACC, None)}
   }
   #[inline]
   pub fn color(&self) -> Color {
@@ -322,27 +322,27 @@ impl flatbuffers::Verifiable for Player<'_> {
   ) -> Result<(), flatbuffers::InvalidFlatbuffer> {
     use self::flatbuffers::Verifiable;
     v.visit_table(pos)?
+     .visit_field::<u32>("id", Self::VT_ID, false)?
      .visit_field::<Vector2>("pos", Self::VT_POS, false)?
      .visit_field::<Vector2>("vel", Self::VT_VEL, false)?
-     .visit_field::<Vector2>("acc", Self::VT_ACC, false)?
      .visit_field::<Color>("color", Self::VT_COLOR, false)?
      .finish();
     Ok(())
   }
 }
 pub struct PlayerArgs<'a> {
+    pub id: u32,
     pub pos: Option<&'a Vector2>,
     pub vel: Option<&'a Vector2>,
-    pub acc: Option<&'a Vector2>,
     pub color: Color,
 }
 impl<'a> Default for PlayerArgs<'a> {
   #[inline]
   fn default() -> Self {
     PlayerArgs {
+      id: 0,
       pos: None,
       vel: None,
-      acc: None,
       color: Color::Red,
     }
   }
@@ -354,16 +354,16 @@ pub struct PlayerBuilder<'a: 'b, 'b, A: flatbuffers::Allocator + 'a> {
 }
 impl<'a: 'b, 'b, A: flatbuffers::Allocator + 'a> PlayerBuilder<'a, 'b, A> {
   #[inline]
+  pub fn add_id(&mut self, id: u32) {
+    self.fbb_.push_slot::<u32>(Player::VT_ID, id, 0);
+  }
+  #[inline]
   pub fn add_pos(&mut self, pos: &Vector2) {
     self.fbb_.push_slot_always::<&Vector2>(Player::VT_POS, pos);
   }
   #[inline]
   pub fn add_vel(&mut self, vel: &Vector2) {
     self.fbb_.push_slot_always::<&Vector2>(Player::VT_VEL, vel);
-  }
-  #[inline]
-  pub fn add_acc(&mut self, acc: &Vector2) {
-    self.fbb_.push_slot_always::<&Vector2>(Player::VT_ACC, acc);
   }
   #[inline]
   pub fn add_color(&mut self, color: Color) {
@@ -387,9 +387,9 @@ impl<'a: 'b, 'b, A: flatbuffers::Allocator + 'a> PlayerBuilder<'a, 'b, A> {
 impl core::fmt::Debug for Player<'_> {
   fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
     let mut ds = f.debug_struct("Player");
+      ds.field("id", &self.id());
       ds.field("pos", &self.pos());
       ds.field("vel", &self.vel());
-      ds.field("acc", &self.acc());
       ds.field("color", &self.color());
       ds.finish()
   }

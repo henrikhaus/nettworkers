@@ -6,9 +6,9 @@ struct Vector2 {
 }
 
 table Player {
+    id: uint32;
     pos: Vector2;
     vel: Vector2;
-    acc: Vector2;
     color: Color = Red;
 }
 
