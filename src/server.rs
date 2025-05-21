@@ -17,12 +17,12 @@ mod player_commands_generated;
 use crate::player_commands_generated::{PlayerCommand, PlayerCommands};
 
 const MAX_PLAYERS: usize = 10;
-const GRAVITY: f32 = 1.0;
+const GRAVITY: f32 = 1000.0;
 const FRICTION: f32 = 0.8;
 const JUMP_CD: f32 = 0.3;
 const SCREEN_HEIGHT: usize = 360;
 const SCREEN_WIDTH: usize = 640;
-const TICK_DURATION: Duration = Duration::from_millis(16);
+const TICK_DURATION: Duration = Duration::from_millis(333);
 const SERVER_ADDR: &str = "127.0.0.1:9000";
 
 #[derive(Clone, Copy)]
@@ -55,7 +55,7 @@ impl Player {
             pos: Vec2::zero(),
             vel: Vec2::zero(),
             acc: 0.75,
-            jump_force: 10.0,
+            jump_force: 400.0,
             jump_timer: 0.0,
             color: Color::Red,
             size: 16.0,
@@ -73,18 +73,24 @@ fn main() -> Result<()> {
     let tick_commands = Arc::clone(&commands);
     let tick_socket = Arc::clone(&socket);
 
-    thread::spawn(move || loop {
-        let start = Instant::now();
+    thread::spawn(move || {
+        let mut last_tick = Instant::now();
+        loop {
+            let start = Instant::now();
+            let now = Instant::now();
+            let dt = now.duration_since(last_tick).as_secs_f32();
+            last_tick = now;
 
-        let mut players_guard = tick_players.lock().unwrap();
-        let mut commands_guard = tick_commands.lock().unwrap();
-        tick(&mut players_guard, &mut commands_guard, &tick_socket);
-        drop(players_guard);
-        drop(commands_guard);
+            let mut players_guard = tick_players.lock().unwrap();
+            let mut commands_guard = tick_commands.lock().unwrap();
+            tick(&mut players_guard, &mut commands_guard, &tick_socket, dt);
+            drop(players_guard);
+            drop(commands_guard);
 
-        let sleep_time = TICK_DURATION.checked_sub(start.elapsed());
-        if let Some(sleep_time) = sleep_time {
-            sleep(sleep_time)
+            let sleep_time = TICK_DURATION.checked_sub(start.elapsed());
+            if let Some(sleep_time) = sleep_time {
+                sleep(sleep_time)
+            }
         }
     });
 
@@ -102,6 +108,7 @@ fn tick(
     players: &mut MutexGuard<Vec<Player>>,
     commands: &mut Vec<(SocketAddr, PlayerCommand)>,
     socket: &UdpSocket,
+    dt: f32,
 ) {
     let mut prev_pos: Vec<(usize, Vec2)> = vec![];
     for (index, p) in players.iter().enumerate() {
@@ -121,7 +128,15 @@ fn tick(
         }
     }
 
-    physics(players);
+    let mut accumulator = dt;
+    let fixed_dt = 0.016; // 16 ms
+
+    while accumulator > 0.0 {
+        let step = accumulator.min(fixed_dt);
+        physics(players, step);
+        accumulator -= step;
+    }
+
     let player_forces = collision(players);
     for (i, force, pos) in player_forces {
         players[i].vel.x = force.x;
@@ -226,13 +241,13 @@ fn collision(players: &[Player]) -> Vec<(usize, Vec2, Vec2)> {
     player_forces
 }
 
-fn physics(players: &mut [Player]) {
+fn physics(players: &mut [Player], dt: f32) {
     for player in players {
-        player.pos.x = player.pos.x + player.vel.x;
-        player.pos.y = player.pos.y + player.vel.y;
-        player.vel.x *= FRICTION;
-        player.vel.y += GRAVITY;
-        player.jump_timer += 0.16;
+        player.pos.x += player.vel.x * dt;
+        player.pos.y += player.vel.y * dt;
+        player.vel.x *= FRICTION.powf(dt);
+        player.vel.y += GRAVITY * dt;
+        player.jump_timer += dt;
 
         if player.pos.y > SCREEN_HEIGHT as f32 - player.size {
             player.pos.y = SCREEN_HEIGHT as f32 - player.size;
