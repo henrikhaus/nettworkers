@@ -394,34 +394,34 @@ impl core::fmt::Debug for Player<'_> {
       ds.finish()
   }
 }
-pub enum PlayersListOffset {}
+pub enum GameStateOffset {}
 #[derive(Copy, Clone, PartialEq)]
 
-pub struct PlayersList<'a> {
+pub struct GameState<'a> {
   pub _tab: flatbuffers::Table<'a>,
 }
 
-impl<'a> flatbuffers::Follow<'a> for PlayersList<'a> {
-  type Inner = PlayersList<'a>;
+impl<'a> flatbuffers::Follow<'a> for GameState<'a> {
+  type Inner = GameState<'a>;
   #[inline]
   unsafe fn follow(buf: &'a [u8], loc: usize) -> Self::Inner {
     Self { _tab: flatbuffers::Table::new(buf, loc) }
   }
 }
 
-impl<'a> PlayersList<'a> {
+impl<'a> GameState<'a> {
   pub const VT_PLAYERS: flatbuffers::VOffsetT = 4;
 
   #[inline]
   pub unsafe fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
-    PlayersList { _tab: table }
+    GameState { _tab: table }
   }
   #[allow(unused_mut)]
   pub fn create<'bldr: 'args, 'args: 'mut_bldr, 'mut_bldr, A: flatbuffers::Allocator + 'bldr>(
     _fbb: &'mut_bldr mut flatbuffers::FlatBufferBuilder<'bldr, A>,
-    args: &'args PlayersListArgs<'args>
-  ) -> flatbuffers::WIPOffset<PlayersList<'bldr>> {
-    let mut builder = PlayersListBuilder::new(_fbb);
+    args: &'args GameStateArgs<'args>
+  ) -> flatbuffers::WIPOffset<GameState<'bldr>> {
+    let mut builder = GameStateBuilder::new(_fbb);
     if let Some(x) = args.players { builder.add_players(x); }
     builder.finish()
   }
@@ -432,11 +432,11 @@ impl<'a> PlayersList<'a> {
     // Safety:
     // Created from valid Table for this object
     // which contains a valid value in this slot
-    unsafe { self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, flatbuffers::ForwardsUOffset<Player>>>>(PlayersList::VT_PLAYERS, None)}
+    unsafe { self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, flatbuffers::ForwardsUOffset<Player>>>>(GameState::VT_PLAYERS, None)}
   }
 }
 
-impl flatbuffers::Verifiable for PlayersList<'_> {
+impl flatbuffers::Verifiable for GameState<'_> {
   #[inline]
   fn run_verifier(
     v: &mut flatbuffers::Verifier, pos: usize
@@ -448,117 +448,117 @@ impl flatbuffers::Verifiable for PlayersList<'_> {
     Ok(())
   }
 }
-pub struct PlayersListArgs<'a> {
+pub struct GameStateArgs<'a> {
     pub players: Option<flatbuffers::WIPOffset<flatbuffers::Vector<'a, flatbuffers::ForwardsUOffset<Player<'a>>>>>,
 }
-impl<'a> Default for PlayersListArgs<'a> {
+impl<'a> Default for GameStateArgs<'a> {
   #[inline]
   fn default() -> Self {
-    PlayersListArgs {
+    GameStateArgs {
       players: None,
     }
   }
 }
 
-pub struct PlayersListBuilder<'a: 'b, 'b, A: flatbuffers::Allocator + 'a> {
+pub struct GameStateBuilder<'a: 'b, 'b, A: flatbuffers::Allocator + 'a> {
   fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a, A>,
   start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
 }
-impl<'a: 'b, 'b, A: flatbuffers::Allocator + 'a> PlayersListBuilder<'a, 'b, A> {
+impl<'a: 'b, 'b, A: flatbuffers::Allocator + 'a> GameStateBuilder<'a, 'b, A> {
   #[inline]
   pub fn add_players(&mut self, players: flatbuffers::WIPOffset<flatbuffers::Vector<'b , flatbuffers::ForwardsUOffset<Player<'b >>>>) {
-    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(PlayersList::VT_PLAYERS, players);
+    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(GameState::VT_PLAYERS, players);
   }
   #[inline]
-  pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a, A>) -> PlayersListBuilder<'a, 'b, A> {
+  pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a, A>) -> GameStateBuilder<'a, 'b, A> {
     let start = _fbb.start_table();
-    PlayersListBuilder {
+    GameStateBuilder {
       fbb_: _fbb,
       start_: start,
     }
   }
   #[inline]
-  pub fn finish(self) -> flatbuffers::WIPOffset<PlayersList<'a>> {
+  pub fn finish(self) -> flatbuffers::WIPOffset<GameState<'a>> {
     let o = self.fbb_.end_table(self.start_);
     flatbuffers::WIPOffset::new(o.value())
   }
 }
 
-impl core::fmt::Debug for PlayersList<'_> {
+impl core::fmt::Debug for GameState<'_> {
   fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-    let mut ds = f.debug_struct("PlayersList");
+    let mut ds = f.debug_struct("GameState");
       ds.field("players", &self.players());
       ds.finish()
   }
 }
 #[inline]
-/// Verifies that a buffer of bytes contains a `PlayersList`
+/// Verifies that a buffer of bytes contains a `GameState`
 /// and returns it.
 /// Note that verification is still experimental and may not
 /// catch every error, or be maximally performant. For the
 /// previous, unchecked, behavior use
-/// `root_as_players_list_unchecked`.
-pub fn root_as_players_list(buf: &[u8]) -> Result<PlayersList, flatbuffers::InvalidFlatbuffer> {
-  flatbuffers::root::<PlayersList>(buf)
+/// `root_as_game_state_unchecked`.
+pub fn root_as_game_state(buf: &[u8]) -> Result<GameState, flatbuffers::InvalidFlatbuffer> {
+  flatbuffers::root::<GameState>(buf)
 }
 #[inline]
 /// Verifies that a buffer of bytes contains a size prefixed
-/// `PlayersList` and returns it.
+/// `GameState` and returns it.
 /// Note that verification is still experimental and may not
 /// catch every error, or be maximally performant. For the
 /// previous, unchecked, behavior use
-/// `size_prefixed_root_as_players_list_unchecked`.
-pub fn size_prefixed_root_as_players_list(buf: &[u8]) -> Result<PlayersList, flatbuffers::InvalidFlatbuffer> {
-  flatbuffers::size_prefixed_root::<PlayersList>(buf)
+/// `size_prefixed_root_as_game_state_unchecked`.
+pub fn size_prefixed_root_as_game_state(buf: &[u8]) -> Result<GameState, flatbuffers::InvalidFlatbuffer> {
+  flatbuffers::size_prefixed_root::<GameState>(buf)
 }
 #[inline]
 /// Verifies, with the given options, that a buffer of bytes
-/// contains a `PlayersList` and returns it.
+/// contains a `GameState` and returns it.
 /// Note that verification is still experimental and may not
 /// catch every error, or be maximally performant. For the
 /// previous, unchecked, behavior use
-/// `root_as_players_list_unchecked`.
-pub fn root_as_players_list_with_opts<'b, 'o>(
+/// `root_as_game_state_unchecked`.
+pub fn root_as_game_state_with_opts<'b, 'o>(
   opts: &'o flatbuffers::VerifierOptions,
   buf: &'b [u8],
-) -> Result<PlayersList<'b>, flatbuffers::InvalidFlatbuffer> {
-  flatbuffers::root_with_opts::<PlayersList<'b>>(opts, buf)
+) -> Result<GameState<'b>, flatbuffers::InvalidFlatbuffer> {
+  flatbuffers::root_with_opts::<GameState<'b>>(opts, buf)
 }
 #[inline]
 /// Verifies, with the given verifier options, that a buffer of
-/// bytes contains a size prefixed `PlayersList` and returns
+/// bytes contains a size prefixed `GameState` and returns
 /// it. Note that verification is still experimental and may not
 /// catch every error, or be maximally performant. For the
 /// previous, unchecked, behavior use
-/// `root_as_players_list_unchecked`.
-pub fn size_prefixed_root_as_players_list_with_opts<'b, 'o>(
+/// `root_as_game_state_unchecked`.
+pub fn size_prefixed_root_as_game_state_with_opts<'b, 'o>(
   opts: &'o flatbuffers::VerifierOptions,
   buf: &'b [u8],
-) -> Result<PlayersList<'b>, flatbuffers::InvalidFlatbuffer> {
-  flatbuffers::size_prefixed_root_with_opts::<PlayersList<'b>>(opts, buf)
+) -> Result<GameState<'b>, flatbuffers::InvalidFlatbuffer> {
+  flatbuffers::size_prefixed_root_with_opts::<GameState<'b>>(opts, buf)
 }
 #[inline]
-/// Assumes, without verification, that a buffer of bytes contains a PlayersList and returns it.
+/// Assumes, without verification, that a buffer of bytes contains a GameState and returns it.
 /// # Safety
-/// Callers must trust the given bytes do indeed contain a valid `PlayersList`.
-pub unsafe fn root_as_players_list_unchecked(buf: &[u8]) -> PlayersList {
-  flatbuffers::root_unchecked::<PlayersList>(buf)
+/// Callers must trust the given bytes do indeed contain a valid `GameState`.
+pub unsafe fn root_as_game_state_unchecked(buf: &[u8]) -> GameState {
+  flatbuffers::root_unchecked::<GameState>(buf)
 }
 #[inline]
-/// Assumes, without verification, that a buffer of bytes contains a size prefixed PlayersList and returns it.
+/// Assumes, without verification, that a buffer of bytes contains a size prefixed GameState and returns it.
 /// # Safety
-/// Callers must trust the given bytes do indeed contain a valid size prefixed `PlayersList`.
-pub unsafe fn size_prefixed_root_as_players_list_unchecked(buf: &[u8]) -> PlayersList {
-  flatbuffers::size_prefixed_root_unchecked::<PlayersList>(buf)
+/// Callers must trust the given bytes do indeed contain a valid size prefixed `GameState`.
+pub unsafe fn size_prefixed_root_as_game_state_unchecked(buf: &[u8]) -> GameState {
+  flatbuffers::size_prefixed_root_unchecked::<GameState>(buf)
 }
 #[inline]
-pub fn finish_players_list_buffer<'a, 'b, A: flatbuffers::Allocator + 'a>(
+pub fn finish_game_state_buffer<'a, 'b, A: flatbuffers::Allocator + 'a>(
     fbb: &'b mut flatbuffers::FlatBufferBuilder<'a, A>,
-    root: flatbuffers::WIPOffset<PlayersList<'a>>) {
+    root: flatbuffers::WIPOffset<GameState<'a>>) {
   fbb.finish(root, None);
 }
 
 #[inline]
-pub fn finish_size_prefixed_players_list_buffer<'a, 'b, A: flatbuffers::Allocator + 'a>(fbb: &'b mut flatbuffers::FlatBufferBuilder<'a, A>, root: flatbuffers::WIPOffset<PlayersList<'a>>) {
+pub fn finish_size_prefixed_game_state_buffer<'a, 'b, A: flatbuffers::Allocator + 'a>(fbb: &'b mut flatbuffers::FlatBufferBuilder<'a, A>, root: flatbuffers::WIPOffset<GameState<'a>>) {
   fbb.finish_size_prefixed(root, None);
 }

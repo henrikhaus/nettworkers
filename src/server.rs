@@ -8,9 +8,9 @@ use std::thread::sleep;
 use std::time::{Duration, Instant};
 
 #[allow(dead_code, unused_imports)]
-#[path = "../players_list_generated.rs"]
-mod players_list_generated;
-use crate::players_list_generated::{Player as SchemaPlayer, PlayerArgs, Color, PlayersList, Vector2};
+#[path = "../game_state_generated.rs"]
+mod game_state_generated;
+use crate::game_state_generated::{Player as SchemaPlayer, PlayerArgs, Color, GameState, Vector2};
 #[path = "../player_commands_generated.rs"]
 mod player_commands_generated;
 use crate::player_commands_generated::{PlayerCommand, PlayerCommands};
@@ -158,9 +158,9 @@ fn tick(
         .collect();
 
     let players_vec = builder.create_vector(&players_offsets);
-    let players_list = PlayersList::create(
+    let players_list = GameState::create(
         &mut builder,
-        &players_list_generated::PlayersListArgs {
+        &game_state_generated::GameStateArgs {
             players: Some(players_vec),
         },
     );

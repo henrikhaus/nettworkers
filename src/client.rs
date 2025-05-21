@@ -6,9 +6,9 @@ use std::thread;
 use macroquad::color::hsl_to_rgb;
 
 #[allow(dead_code, unused_imports)]
-#[path = "../players_list_generated.rs"]
-mod players_list_generated;
-use crate::players_list_generated::{Color, PlayersList};
+#[path = "../game_state_generated.rs"]
+mod game_state_generated;
+use crate::game_state_generated::{Color, GameState};
 #[path = "../player_commands_generated.rs"]
 mod player_commands_generated;
 use crate::player_commands_generated::{PlayerCommand, PlayerCommands, PlayerCommandsArgs};
@@ -70,6 +70,8 @@ async fn main() {
         color: Color::Red,
     };
 
+    let mut sequence: u32 = 0;
+
     let (_client_addr, socket) = find_available_client_addr(3001, 3010);
     let socket = Arc::new(socket);
     let players: Arc<Mutex<Vec<OwnedPlayer>>> = Arc::new(Mutex::new(Vec::new()));
@@ -102,9 +104,13 @@ async fn main() {
             let player_command = PlayerCommands::create(
                 &mut builder,
                 &PlayerCommandsArgs {
+                    sequence,
+                    dt_sec: 0.0,
                     commands: Some(commands_vec),
+                    client_timestamp: 0.0,
                 },
             );
+            sequence += 1;
             builder.finish(player_command, None);
             let bytes = builder.finished_data();
             tick_socket
@@ -131,7 +137,7 @@ async fn main() {
 }
 
 fn handle_packet(packet: &[u8], players: &mut Vec<OwnedPlayer>) {
-    let players_list = root::<PlayersList>(packet).expect("No players received.");
+    let players_list = root::<GameState>(packet).expect("No players received.");
     if let Some(player_vec) = players_list.players() {
         players.clear();
         for p in player_vec {
