@@ -84,7 +84,6 @@ impl Server {
                     &PlayerArgs {
                         pos: Some(&Vector2::new(p.1.pos.x, p.1.pos.y)),
                         vel: None,
-                        acc: None,
                         color: p.1.color,
                     },
                 )
