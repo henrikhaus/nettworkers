@@ -12,9 +12,6 @@ mod state;
 #[allow(dead_code, unused_imports)]
 #[path = "../game_state_generated.rs"]
 mod game_state_generated;
-use crate::game_state_generated::{
-    GameState as GameStateSchema, Player as PlayerSchema, PlayerArgs, Vector2,
-};
 #[path = "../player_commands_generated.rs"]
 mod player_commands_generated;
 use crate::player_commands_generated::{PlayerCommand, PlayerCommands};

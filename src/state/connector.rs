@@ -15,9 +15,11 @@ impl GameState {
                 game_state_generated::Player::create(
                     builder,
                     &game_state_generated::PlayerArgs {
+                        id: p.0,
                         pos: Some(&game_state_generated::Vector2::new(p.1.pos.x, p.1.pos.y)),
                         vel: Some(&game_state_generated::Vector2::new(p.1.vel.x, p.1.vel.y)),
-                        acc: Some(&game_state_generated::Vector2::new(p.1.vel.x, p.1.vel.y)),
+                        jump_timer: p.1.jump_timer,
+                        size: p.1.size,
                         color: p.1.color,
                     },
                 )
@@ -51,8 +53,6 @@ impl GameState {
                         id: p.id(),
                         pos: p.pos().unwrap().to_owned().into(),
                         vel: p.vel().unwrap().to_owned().into(),
-                        acc: 20.0,
-                        jump_force: p.jump_force(),
                         jump_timer: p.jump_timer,
                         color: p.color,
                         size: p.size,
