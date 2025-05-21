@@ -1,5 +1,8 @@
+use std::collections::{HashMap, VecDeque};
+
 use super::model::*;
-use crate::game_state_generated::Color;
+use super::physics::*;
+use crate::{game_state_generated::Color, player_commands_generated::PlayerCommand};
 
 use super::{JUMP_CD, SCREEN_HEIGHT};
 
@@ -19,16 +22,57 @@ impl PlayerState {
 }
 
 pub struct GameState {
-    pub players: Vec<PlayerState>,
+    pub players: HashMap<u32, PlayerState>,
 }
 
 impl GameState {
     pub fn new() -> GameState {
-        GameState { players: vec![] }
+        GameState {
+            players: HashMap::new(),
+        }
     }
 
-    pub fn mutate(&mut self) {
-        println!("Mutating!")
+    pub fn mutate(&mut self, command_queue: &VecDeque<(u32, PlayerCommand)>, dt: f32) {
+        println!("Mutating!");
+
+        for (player_id, command) in command_queue {
+            // Get player, add to game state if not exists
+            let player = match self.players.get_mut(&player_id) {
+                Some(player) => player,
+                None => {
+                    let new_player = PlayerState::new(*player_id);
+                    self.players.insert(*player_id, new_player);
+                    self.players.get_mut(player_id).unwrap()
+                }
+            };
+
+            // Execute command
+            match command {
+                &PlayerCommand::Move_right => player.handle_move_right(),
+                &PlayerCommand::Move_left => player.handle_move_left(),
+                &PlayerCommand::Jump => self.players.get_mut(&player_id).unwrap().handle_jump(),
+                _ => {}
+            }
+        }
+
+        // Physics
+        let mut accumulator = dt;
+        let fixed_dt = 0.016; // 16 ms
+
+        while accumulator > 0.0 {
+            let step = accumulator.min(fixed_dt);
+            physics(self, step);
+            accumulator -= step;
+        }
+
+        // Collision
+        // let player_forces = collision(players);
+        // for (i, force, pos) in player_forces {
+        //     players[i].vel.x = force.x;
+        //     players[i].vel.y = force.y;
+        //     players[i].pos.x = pos.x;
+        //     players[i].pos.y = pos.y;
+        // }
     }
 }
 

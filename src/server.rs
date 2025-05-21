@@ -44,12 +44,11 @@ impl Server {
 
     fn handle_packet(&self, packet: &[u8], src_addr: SocketAddr) {
         let player_commands = root::<PlayerCommands>(packet).expect("No command received");
+        let player_id = self.get_or_add_player_id(&src_addr);
 
         let mut command_queue_guard = self.command_queue.lock().unwrap();
         if let Some(cmd_list) = player_commands.commands() {
             for cmd in cmd_list {
-                let player_id = self.get_or_add_player_id(&src_addr);
-
                 command_queue_guard.push_back((player_id, cmd));
             }
         }
@@ -86,10 +85,10 @@ impl Server {
                 PlayerSchema::create(
                     &mut builder,
                     &PlayerArgs {
-                        pos: Some(&Vector2::new(p.pos.x, p.pos.y)),
+                        pos: Some(&Vector2::new(p.1.pos.x, p.1.pos.y)),
                         vel: None,
                         acc: None,
-                        color: p.color,
+                        color: p.1.color,
                     },
                 )
             })
@@ -123,13 +122,11 @@ impl Server {
                 let dt = now.duration_since(last_tick).as_secs_f32();
                 last_tick = now;
 
-                let mut command_queue_guard = tick_server.command_queue.lock().unwrap();
                 let ip_to_player_guard = tick_server.ip_to_player_id.lock().unwrap();
 
                 // Let tick only mutate state
-                tick_server.tick(&mut command_queue_guard, dt);
+                tick_server.tick(dt);
                 tick_server.broadcast_state(&ip_to_player_guard);
-                drop(command_queue_guard);
                 drop(ip_to_player_guard);
 
                 let sleep_time = TICK_DURATION.checked_sub(start.elapsed());
@@ -153,41 +150,11 @@ impl Server {
         }
     }
 
-    fn tick(&self, command_queue: &mut VecDeque<(u32, PlayerCommand)>, dt: f32) {
-        // Update state with client commands
-        for (addr, cmd) in command_queue.iter() {
-            if let Some(player) = get_player_by_ip(addr, players) {
-                match cmd {
-                    &PlayerCommand::Move_right => handle_move_right(player),
-                    &PlayerCommand::Move_left => handle_move_left(player),
-                    &PlayerCommand::Jump => handle_jump(player),
-                    _ => {}
-                }
-            } else {
-                println!("New player connected: {}", addr);
-                players.push(Player::new(*addr));
-            }
-        }
+    fn tick(&mut self, dt: f32) {
+        let mut command_queue_guard = self.command_queue.lock().unwrap();
+        self.state.mutate(&command_queue_guard, dt);
 
-        // Physics
-        let mut accumulator = dt;
-        let fixed_dt = 0.016; // 16 ms
-
-        while accumulator > 0.0 {
-            let step = accumulator.min(fixed_dt);
-            physics(players, step);
-            accumulator -= step;
-        }
-
-        let player_forces = collision(players);
-        for (i, force, pos) in player_forces {
-            players[i].vel.x = force.x;
-            players[i].vel.y = force.y;
-            players[i].pos.x = pos.x;
-            players[i].pos.y = pos.y;
-        }
-
-        command_queue.clear();
+        command_queue_guard.clear();
     }
 }
 

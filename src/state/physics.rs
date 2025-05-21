@@ -1,14 +1,11 @@
-use super::model::*;
-use super::{SCREEN_HEIGHT, SCREEN_WIDTH};
+use super::GameState;
+use super::{GRAVITY, GROUND_FRICTION, SCREEN_HEIGHT, SCREEN_WIDTH};
 
-const GRAVITY: f32 = 1000.0;
-const FRICTION: f32 = 0.8;
-
-fn physics(players: &mut [PlayerState], dt: f32) {
-    for player in players {
+pub fn physics(state: &mut GameState, dt: f32) {
+    for (_player_id, player) in &mut state.players {
         player.pos.x += player.vel.x * dt;
         player.pos.y += player.vel.y * dt;
-        player.vel.x *= FRICTION.powf(dt);
+        player.vel.x *= GROUND_FRICTION.powf(dt);
         player.vel.y += GRAVITY * dt;
         player.jump_timer += dt;
 
@@ -31,52 +28,52 @@ fn physics(players: &mut [PlayerState], dt: f32) {
     }
 }
 
-fn collision(players: &[PlayerState]) -> Vec<(usize, Vec2, Vec2)> {
-    let mut player_forces = vec![];
-    for (i, p1) in players.iter().enumerate() {
-        for p2 in players {
-            if p1.id == p2.id {
-                continue;
-            }
+// pub fn collision(state: &mut GameState) -> Vec<(usize, Vec2, Vec2)> {
+//     let mut player_forces = vec![];
+//     for (player_id_1, player) in &mut state.players {
+//         for p2 in players {
+//             if p1.id == p2.id {
+//                 continue;
+//             }
 
-            let v_overlap = p1.pos.y <= p2.pos.y + p2.size && p2.pos.y <= p1.pos.y + p1.size;
-            let h_overlap = p1.pos.x <= p2.pos.x + p2.size && p2.pos.x <= p1.pos.x + p1.size;
-            let overlap = v_overlap && h_overlap;
+//             let v_overlap = p1.pos.y <= p2.pos.y + p2.size && p2.pos.y <= p1.pos.y + p1.size;
+//             let h_overlap = p1.pos.x <= p2.pos.x + p2.size && p2.pos.x <= p1.pos.x + p1.size;
+//             let overlap = v_overlap && h_overlap;
 
-            let p1_top = overlap && p1.vel.y > p2.vel.y;
-            let p1_bottom = overlap && p1.vel.y < p2.vel.y;
-            let p1_left = overlap && p1.vel.x > p2.vel.x;
-            let p1_right = overlap && p1.vel.x < p2.vel.x;
+//             let p1_top = overlap && p1.vel.y > p2.vel.y;
+//             let p1_bottom = overlap && p1.vel.y < p2.vel.y;
+//             let p1_left = overlap && p1.vel.x > p2.vel.x;
+//             let p1_right = overlap && p1.vel.x < p2.vel.x;
 
-            if overlap {
-                /*if p1_top {
-                    let force = Vec2 { x: (p1.vel.x + p2.vel.x) / 2.0, y: 0.0 };
-                    let pos = Vec2 { x: p1.pos.x, y: p2.pos.y - p1.size };
-                    player_forces.push((i, force, pos));
-                } else*/
-                if p1_left {
-                    let force = Vec2 {
-                        x: (p1.vel.x + p2.vel.x) / 2.0,
-                        y: (p1.vel.y + p2.vel.y) / 2.0,
-                    };
-                    let pos = Vec2 {
-                        x: p2.pos.x - p1.size,
-                        y: p1.pos.y,
-                    };
-                    player_forces.push((i, force, pos));
-                } else if p1_right {
-                    let force = Vec2 {
-                        x: (p1.vel.x + p2.vel.x) / 2.0,
-                        y: (p1.vel.y + p2.vel.y) / 2.0,
-                    };
-                    let pos = Vec2 {
-                        x: p1.pos.x,
-                        y: p1.pos.y,
-                    };
-                    player_forces.push((i, force, pos));
-                }
-            }
-        }
-    }
-    player_forces
-}
+//             if overlap {
+//                 /*if p1_top {
+//                     let force = Vec2 { x: (p1.vel.x + p2.vel.x) / 2.0, y: 0.0 };
+//                     let pos = Vec2 { x: p1.pos.x, y: p2.pos.y - p1.size };
+//                     player_forces.push((i, force, pos));
+//                 } else*/
+//                 if p1_left {
+//                     let force = Vec2 {
+//                         x: (p1.vel.x + p2.vel.x) / 2.0,
+//                         y: (p1.vel.y + p2.vel.y) / 2.0,
+//                     };
+//                     let pos = Vec2 {
+//                         x: p2.pos.x - p1.size,
+//                         y: p1.pos.y,
+//                     };
+//                     player_forces.push((i, force, pos));
+//                 } else if p1_right {
+//                     let force = Vec2 {
+//                         x: (p1.vel.x + p2.vel.x) / 2.0,
+//                         y: (p1.vel.y + p2.vel.y) / 2.0,
+//                     };
+//                     let pos = Vec2 {
+//                         x: p1.pos.x,
+//                         y: p1.pos.y,
+//                     };
+//                     player_forces.push((i, force, pos));
+//                 }
+//             }
+//         }
+//     }
+//     player_forces
+// }
