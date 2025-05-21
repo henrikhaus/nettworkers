@@ -20,7 +20,7 @@ mod player_commands_generated;
 use crate::player_commands_generated::{PlayerCommand, PlayerCommands};
 
 const MAX_PLAYERS: usize = 10;
-const TICK_DURATION: Duration = Duration::from_millis(333);
+const TICK_DURATION: Duration = Duration::from_millis(16);
 const SERVER_ADDR: &str = "127.0.0.1:9000";
 
 struct Server {
