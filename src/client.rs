@@ -1,9 +1,36 @@
-use flatbuffers::{root, FlatBufferBuilder, Push};
+use flatbuffers::{root, FlatBufferBuilder};
+use macroquad::color::*;
+use macroquad::math::f32;
 use macroquad::prelude::*;
+use serde::Deserialize;
+use std::collections::HashMap;
+use std::fs::File;
 use std::net::UdpSocket;
 use std::sync::{Arc, Mutex, MutexGuard};
 use std::thread;
-use macroquad::color::hsl_to_rgb;
+
+#[derive(Debug, Deserialize, Clone)]
+struct RgbaColor {
+    r: u8,
+    g: u8,
+    b: u8,
+    a: u8,
+}
+#[derive(Debug, Deserialize, Clone)]
+struct SceneObject {
+    x: f32,
+    y: f32,
+    w: f32,
+    h: f32,
+    color: RgbaColor,
+    z: i32,
+}
+
+#[derive(Debug, Deserialize)]
+struct Scene {
+    decorations: HashMap<u32, SceneObject>,
+    collidables: HashMap<u32, SceneObject>,
+}
 
 #[allow(dead_code, unused_imports)]
 #[path = "../game_state_generated.rs"]
@@ -19,8 +46,7 @@ const SCREEN_WIDTH: f32 = 640.0;
 const SCREEN_HEIGHT: f32 = 360.0;
 
 const SCALE: f32 = 1.0;
-const FULLSCREEN: bool = false;
-
+const FULLSCREEN: bool = true;
 
 struct ClientPlayer {
     id: Option<usize>,
@@ -48,7 +74,7 @@ fn window_conf() -> Conf {
     }
 }
 
-fn find_available_client_addr(start_port: u16, max_port: u16) -> (String, std::net::UdpSocket) {
+fn find_available_client_addr(start_port: u16, max_port: u16) -> (String, UdpSocket) {
     let ip = "127.0.0.1";
     for port in start_port..=max_port {
         let addr = format!("{}:{}", ip, port);
@@ -71,6 +97,9 @@ async fn main() {
     };
 
     let mut sequence: u32 = 0;
+
+    let file = File::open("src/scenes/scene_1.json").expect("Scene file must open");
+    let scene: Scene = serde_json::from_reader(file).expect("JSON must match Scene");
 
     let (_client_addr, socket) = find_available_client_addr(3001, 3010);
     let socket = Arc::new(socket);
@@ -95,6 +124,13 @@ async fn main() {
     });
 
     let mut scale;
+    let mut objects: Vec<SceneObject> = scene
+        .decorations
+        .values()
+        .chain(scene.collidables.values())
+        .cloned()
+        .collect();
+    objects.sort_by(|a, b| b.z.cmp(&a.z));
 
     loop {
         input_handler(&mut commands);
@@ -130,7 +166,7 @@ async fn main() {
         let draw_h = SCREEN_HEIGHT * scale;
         let offset = vec2((w - draw_w) / 2.0, (h - draw_h) / 2.0);
 
-        render(&players_guard, scale, offset);
+        render(&players_guard, scale, offset, &objects);
         drop(players_guard);
         next_frame().await;
     }
@@ -150,19 +186,52 @@ fn handle_packet(packet: &[u8], players: &mut Vec<OwnedPlayer>) {
     }
 }
 
-fn render(players: &MutexGuard<Vec<OwnedPlayer>>, scale: f32, offset: Vec2) {
+fn render(
+    players: &MutexGuard<Vec<OwnedPlayer>>,
+    scale: f32,
+    offset: Vec2,
+    objects: &Vec<SceneObject>,
+) {
+    // frame
     clear_background(BLACK);
-    draw_rectangle(offset.x, offset.y, SCREEN_WIDTH * scale, SCREEN_HEIGHT * scale, hsl_to_rgb(0.0,0.0,0.1));
-    let colors = [RED, BLUE, GREEN, PURPLE, ORANGE, BEIGE, PINK];
+    // background
+    draw_rectangle(
+        offset.x,
+        offset.y,
+        SCREEN_WIDTH * scale,
+        SCREEN_HEIGHT * scale,
+        hsl_to_rgb(0.0, 0.0, 0.1),
+    );
+    for obj in objects.iter().filter(|o| o.z >= 0) {
+        draw_scene_obj(obj, scale, offset);
+    }
+    // players
     for (i, p) in players.iter().enumerate() {
+        let col = [RED, BLUE, GREEN, PURPLE, ORANGE, BEIGE, PINK][i % 7];
         draw_rectangle(
             offset.x + p.x * scale,
             offset.y + p.y * scale,
             PLAYER_SIZE * scale,
             PLAYER_SIZE * scale,
-            colors[i % colors.len()],
+            col,
         );
     }
+    // foreground
+    for obj in objects.iter().filter(|o| o.z < 0) {
+        draw_scene_obj(obj, scale, offset);
+    }
+}
+
+fn draw_scene_obj(obj: &SceneObject, scale: f32, offset: Vec2) {
+    let col =
+        macroquad::prelude::Color::from_rgba(obj.color.r, obj.color.g, obj.color.b, obj.color.a);
+    draw_rectangle(
+        offset.x + obj.x * scale,
+        offset.y + obj.y * scale,
+        obj.w * scale,
+        obj.h * scale,
+        col,
+    );
 }
 
 fn input_handler(commands: &mut Vec<PlayerCommand>) {

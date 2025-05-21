@@ -7,6 +7,7 @@ edition = "2021"
 flatbuffers = "25.2.10"
 serde = { version = "1.0.218", features = ["derive"] }
 macroquad = "0.4.13"
+serde_json = "1.0.140"
 
 
 [[bin]]
