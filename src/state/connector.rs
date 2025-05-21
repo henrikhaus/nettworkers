@@ -44,16 +44,22 @@ impl GameState {
             .players()
             .expect("Should have players array")
             .into_iter()
-            .map(|p|  PlayerState {
-                id: 0,
-                pos: p.pos.into(),
-                vel: p.vel.into(),
-                acc: p.acc.into(),
-                jump_force: p.jump_force,
-                jump_timer: p.jump_timer,
-                color: p.color,
-                size: p.size,
-            });
+            .map(|p| {
+                (
+                    p.id(),
+                    PlayerState {
+                        id: p.id(),
+                        pos: p.pos().unwrap().to_owned().into(),
+                        vel: p.vel().unwrap().to_owned().into(),
+                        acc: 20.0,
+                        jump_force: p.jump_force(),
+                        jump_timer: p.jump_timer,
+                        color: p.color,
+                        size: p.size,
+                    },
+                )
+            })
+            .collect();
 
         GameState { players }
     }

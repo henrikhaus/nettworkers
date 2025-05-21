@@ -17,8 +17,6 @@ pub struct PlayerState {
     pub id: u32,
     pub pos: Vec2,
     pub vel: Vec2,
-    pub acc: f32,
-    pub jump_force: f32,
     pub jump_timer: f32,
     pub color: Color,
     pub size: f32,
