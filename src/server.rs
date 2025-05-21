@@ -25,8 +25,8 @@ const SERVER_ADDR: &str = "127.0.0.1:9000";
 
 struct Server {
     state: GameState,
-    command_queue: Arc<VecDeque<PlayerCommand>>,
-    ip_to_player_id: HashMap<SocketAddr, u32>,
+    command_queue: Arc<Mutex<VecDeque<(u32, PlayerCommand)>>>,
+    ip_to_player_id: Arc<Mutex<HashMap<SocketAddr, u32>>>,
     socket: Arc<UdpSocket>,
 }
 
@@ -36,64 +36,46 @@ impl Server {
         println!("UDP running on {}...", SERVER_ADDR);
         Ok(Server {
             state: GameState::new(),
-            command_queue: Arc::new(VecDeque::new()),
-            ip_to_player_id: HashMap::new(),
+            command_queue: Arc::new(Mutex::new(VecDeque::new())),
+            ip_to_player_id: Arc::new(Mutex::new(HashMap::new())),
             socket,
         })
     }
 
-    fn handle_packet(
-        packet: &[u8],
-        src_addr: SocketAddr,
-        commands: &mut MutexGuard<Vec<(SocketAddr, PlayerCommand)>>,
-    ) {
+    fn handle_packet(&self, packet: &[u8], src_addr: SocketAddr) {
         let player_commands = root::<PlayerCommands>(packet).expect("No command received");
+
+        let mut command_queue_guard = self.command_queue.lock().unwrap();
         if let Some(cmd_list) = player_commands.commands() {
             for cmd in cmd_list {
-                commands.push((src_addr, cmd));
+                let player_id = self.get_or_add_player_id(&src_addr);
+
+                command_queue_guard.push_back((player_id, cmd));
             }
         }
     }
 
-    // TODO: Replace with ip_to_player
-    fn get_player_by_ip<'a>(
-        ip: &SocketAddr,
-        players: &'a mut MutexGuard<Vec<Player>>,
-    ) -> Option<&'a mut Player> {
-        players.iter_mut().find(|p| p.ip == *ip)
+    fn get_or_add_player_id(&self, client_addr: &SocketAddr) -> u32 {
+        let mut ip_to_player_id_guard = self.ip_to_player_id.lock().unwrap();
+
+        if let Some(id) = ip_to_player_id_guard.get(client_addr) {
+            // Found player ID
+            return id.to_owned();
+        }
+
+        // Else add the player
+        let highest_id = ip_to_player_id_guard
+            .iter()
+            .map(|pair| pair.1.to_owned())
+            .max()
+            .unwrap_or(0);
+        let new_player_id = highest_id + 1;
+
+        ip_to_player_id_guard.insert(*client_addr, new_player_id);
+        new_player_id
     }
 
-    fn start_tick_thread(&self) {
-        println!("Starting tick thread!");
-
-        let tick_command_queue = Arc::clone(&self.command_queue);
-        let tick_socket = Arc::clone(&self.socket);
-
-        thread::spawn(move || {
-            let mut last_tick = Instant::now();
-            loop {
-                let start = Instant::now();
-                let now = Instant::now();
-                let dt = now.duration_since(last_tick).as_secs_f32();
-                last_tick = now;
-
-                let mut commands_guard = tick_command_queue.lock().unwrap();
-                let mut socket = tick_socket.lock().unwrap();
-                // Let tick only mutate state
-                tick(&mut commands_guard, dt);
-                broadcast_state(tick_socket);
-                drop(players_guard);
-                drop(commands_guard);
-
-                let sleep_time = TICK_DURATION.checked_sub(start.elapsed());
-                if let Some(sleep_time) = sleep_time {
-                    sleep(sleep_time)
-                }
-            }
-        });
-    }
-
-    fn broadcast_state(&self, socket: UdpSocket) {
+    fn broadcast_state(&self, socket: &UdpSocket, ip_to_player: HashMap<SocketAddr, u32>) {
         // Send data to client
         let mut builder = FlatBufferBuilder::with_capacity(2048);
         let players_offsets: Vec<_> = self
@@ -122,29 +104,61 @@ impl Server {
         );
         builder.finish(players_list, None);
         let bytes = builder.finished_data();
-        for p in players.iter() {
-            let _ = socket.send_to(bytes, p.ip);
+
+        let ip_to_player_id_guard = self.ip_to_player_id
+        for (ip, _) in &self.ip_to_player_id {
+            let _ = socket.send_to(bytes, ip);
         }
     }
 
-    pub fn run(self) -> Result<()> {
-        let players: Arc<Mutex<Vec<Player>>> = Arc::new(Mutex::new(Vec::new()));
-        let commands: Arc<Mutex<Vec<(SocketAddr, PlayerCommand)>>> =
-            Arc::new(Mutex::new(Vec::new()));
+    fn start_tick_thread(&self) {
+        println!("Starting tick thread!");
 
+        let tick_command_queue = Arc::clone(&self.command_queue);
+        let tick_socket = Arc::clone(&self.socket);
+        let tick_ip_to_player = Arc::clone(&self.ip_to_player_id);
+
+        thread::spawn(move || {
+            let mut last_tick = Instant::now();
+            loop {
+                let start = Instant::now();
+                let now = Instant::now();
+                let dt = now.duration_since(last_tick).as_secs_f32();
+                last_tick = now;
+
+                let mut command_queue_guard = tick_command_queue.lock().unwrap();
+                let ip_to_player_guard = tick_ip_to_player.lock().unwrap();
+
+                // Let tick only mutate state
+                self.tick(&mut command_queue_guard, dt);
+                self.broadcast_state(&tick_socket, ip_to_player_guard);
+                drop(players_guard);
+                drop(command_queue_guard);
+
+                let sleep_time = TICK_DURATION.checked_sub(start.elapsed());
+                if let Some(sleep_time) = sleep_time {
+                    sleep(sleep_time)
+                }
+            }
+        });
+    }
+
+    pub fn run(self) -> Result<()> {
+        self.start_tick_thread();
+
+        // Listen for commands
+        let socket = Arc::clone(&self.socket);
         loop {
             let mut buf = [0u8; 2048];
             let (amt, src_addr) = socket.recv_from(&mut buf)?;
 
-            let mut commands_guard = commands.lock().unwrap();
-            handle_packet(&buf[..amt], src_addr, &mut commands_guard);
-            drop(commands_guard)
+            self.handle_packet(&buf[..amt], src_addr);
         }
     }
 
-    fn tick(commands: &mut Vec<(SocketAddr, PlayerCommand)>, dt: f32) {
+    fn tick(&self, command_queue: &mut VecDeque<(u32, PlayerCommand)>, dt: f32) {
         // Update state with client commands
-        for (addr, cmd) in commands.iter() {
+        for (addr, cmd) in command_queue.iter() {
             if let Some(player) = get_player_by_ip(addr, players) {
                 match cmd {
                     &PlayerCommand::Move_right => handle_move_right(player),
@@ -176,7 +190,7 @@ impl Server {
             players[i].pos.y = pos.y;
         }
 
-        commands.clear();
+        command_queue.clear();
     }
 }
 

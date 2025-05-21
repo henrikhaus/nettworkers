@@ -19,7 +19,7 @@ impl PlayerState {
 }
 
 pub struct GameState {
-    players: Vec<PlayerState>,
+    pub players: Vec<PlayerState>,
 }
 
 impl GameState {
@@ -50,7 +50,5 @@ impl PlayerState {
 }
 
 impl GameState {
-    fn serialize(&self) {
-        
-    }
+    fn serialize(&self) {}
 }
