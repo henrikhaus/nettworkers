@@ -40,7 +40,8 @@ use crate::game_state_generated::{Color, GameState};
 mod player_commands_generated;
 use crate::player_commands_generated::{PlayerCommand, PlayerCommands, PlayerCommandsArgs};
 
-const SERVER_ADDR: &str = "127.0.0.1:9000";
+const CLIENT_ADDR: &str = "127.0.0.1:0";
+const SERVER_ADDR: &str = "192.168.58.93:9000";
 const PLAYER_SIZE: f32 = 16.0;
 const SCREEN_WIDTH: f32 = 640.0;
 const SCREEN_HEIGHT: f32 = 360.0;
@@ -74,20 +75,6 @@ fn window_conf() -> Conf {
     }
 }
 
-fn find_available_client_addr(start_port: u16, max_port: u16) -> (String, UdpSocket) {
-    let ip = "127.0.0.1";
-    for port in start_port..=max_port {
-        let addr = format!("{}:{}", ip, port);
-        match UdpSocket::bind(&addr) {
-            Ok(socket) => {
-                return (addr, socket);
-            }
-            Err(_) => continue,
-        }
-    }
-    panic!("No available ports in range {}-{}", start_port, max_port);
-}
-
 #[macroquad::main(window_conf)]
 async fn main() {
     let mut player = ClientPlayer {
@@ -101,8 +88,7 @@ async fn main() {
     let file = File::open("src/scenes/scene_1.json").expect("Scene file must open");
     let scene: Scene = serde_json::from_reader(file).expect("JSON must match Scene");
 
-    let (_client_addr, socket) = find_available_client_addr(3001, 3010);
-    let socket = Arc::new(socket);
+    let socket = Arc::new(UdpSocket::bind(CLIENT_ADDR).unwrap());
     let players: Arc<Mutex<Vec<OwnedPlayer>>> = Arc::new(Mutex::new(Vec::new()));
     let mut commands: Vec<PlayerCommand> = Vec::new();
 
