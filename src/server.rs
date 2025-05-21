@@ -1,5 +1,8 @@
 use flatbuffers::{root, FlatBufferBuilder};
+use state::GameState;
+use std::collections::VecDeque;
 use std::io::Result;
+use std::iter::Map;
 use std::net::{SocketAddr, UdpSocket};
 use std::sync::{Arc, Mutex, MutexGuard};
 use std::thread;
@@ -10,56 +13,47 @@ mod state;
 #[allow(dead_code, unused_imports)]
 #[path = "../game_state_generated.rs"]
 mod game_state_generated;
-use crate::game_state_generated::{Color, GameState, Player as SchemaPlayer, PlayerArgs, Vector2};
+use crate::game_state_generated::{
+    GameState as GameStateSchema, Player as PlayerSchema, PlayerArgs, Vector2,
+};
 #[path = "../player_commands_generated.rs"]
 mod player_commands_generated;
 use crate::player_commands_generated::{PlayerCommand, PlayerCommands};
 
 const MAX_PLAYERS: usize = 10;
-const GRAVITY: f32 = 1000.0;
-const FRICTION: f32 = 0.8;
-const JUMP_CD: f32 = 0.3;
-const SCREEN_HEIGHT: usize = 360;
-const SCREEN_WIDTH: usize = 640;
 const TICK_DURATION: Duration = Duration::from_millis(1000);
 const SERVER_ADDR: &str = "127.0.0.1:9000";
 
-#[derive(Clone, Copy)]
-struct Vec2 {
-    x: f32,
-    y: f32,
+struct Server {
+    state: GameState,
+    commandQueue: Arc<VecDeque<PlayerCommand>>,
+    ip_to_player_id: Map<SocketAddr, u32>,
+    socket: Arc<UdpSocket>,
 }
 
-impl Vec2 {
-    fn zero() -> Vec2 {
-        Vec2 { x: 0.0, y: 0.0 }
-    }
-}
-
-struct Player {
-    ip: SocketAddr,
-    pos: Vec2,
-    vel: Vec2,
-    acc: f32,
-    jump_force: f32,
-    jump_timer: f32,
-    color: Color,
-    size: f32,
-}
-
-impl Player {
-    fn new(ip: SocketAddr) -> Player {
-        Player {
-            ip,
-            pos: Vec2::zero(),
-            vel: Vec2::zero(),
-            acc: 0.75,
-            jump_force: 400.0,
-            jump_timer: 0.0,
-            color: Color::Red,
-            size: 16.0,
+impl Server {
+    fn handle_packet(
+        packet: &[u8],
+        src_addr: SocketAddr,
+        commands: &mut MutexGuard<Vec<(SocketAddr, PlayerCommand)>>,
+    ) {
+        let player_commands = root::<PlayerCommands>(packet).expect("No command received");
+        if let Some(cmd_list) = player_commands.commands() {
+            for cmd in cmd_list {
+                commands.push((src_addr, cmd));
+            }
         }
     }
+
+    // TODO: Replace with ip_to_player
+    fn get_player_by_ip<'a>(
+        ip: &SocketAddr,
+        players: &'a mut MutexGuard<Vec<Player>>,
+    ) -> Option<&'a mut Player> {
+        players.iter_mut().find(|p| p.ip == *ip)
+    }
+
+    fn run() {}
 }
 
 fn main() -> Result<()> {
@@ -82,7 +76,9 @@ fn main() -> Result<()> {
 
             let mut players_guard = tick_players.lock().unwrap();
             let mut commands_guard = tick_commands.lock().unwrap();
+            // Let tick only mutate state
             tick(&mut players_guard, &mut commands_guard, &tick_socket, dt);
+            broadcast_state();
             drop(players_guard);
             drop(commands_guard);
 
@@ -109,10 +105,7 @@ fn tick(
     socket: &UdpSocket,
     dt: f32,
 ) {
-    let mut prev_pos: Vec<(usize, Vec2)> = vec![];
-    for (index, p) in players.iter().enumerate() {
-        prev_pos.push((index, p.pos))
-    }
+    // Update state with client commands
     for (addr, cmd) in commands.iter() {
         if let Some(player) = get_player_by_ip(addr, players) {
             match cmd {
@@ -127,6 +120,7 @@ fn tick(
         }
     }
 
+    // Physics
     let mut accumulator = dt;
     let fixed_dt = 0.016; // 16 ms
 
@@ -144,11 +138,12 @@ fn tick(
         players[i].pos.y = pos.y;
     }
 
+    // Send data to client
     let mut builder = FlatBufferBuilder::with_capacity(2048);
     let players_offsets: Vec<_> = players
         .iter()
         .map(|p| {
-            SchemaPlayer::create(
+            PlayerSchema::create(
                 &mut builder,
                 &PlayerArgs {
                     pos: Some(&Vector2::new(p.pos.x, p.pos.y)),
@@ -161,7 +156,7 @@ fn tick(
         .collect();
 
     let players_vec = builder.create_vector(&players_offsets);
-    let players_list = GameState::create(
+    let players_list = GameStateSchema::create(
         &mut builder,
         &game_state_generated::GameStateArgs {
             players: Some(players_vec),
@@ -174,116 +169,4 @@ fn tick(
     }
 
     commands.clear();
-}
-
-fn handle_packet(
-    packet: &[u8],
-    src_addr: SocketAddr,
-    commands: &mut MutexGuard<Vec<(SocketAddr, PlayerCommand)>>,
-) {
-    let player_commands = root::<PlayerCommands>(packet).expect("No command received");
-    if let Some(cmd_list) = player_commands.commands() {
-        for cmd in cmd_list {
-            commands.push((src_addr, cmd));
-        }
-    }
-}
-
-fn collision(players: &[Player]) -> Vec<(usize, Vec2, Vec2)> {
-    let mut player_forces = vec![];
-    for (i, p1) in players.iter().enumerate() {
-        for p2 in players {
-            if p1.ip == p2.ip {
-                continue;
-            }
-
-            let v_overlap = p1.pos.y <= p2.pos.y + p2.size && p2.pos.y <= p1.pos.y + p1.size;
-            let h_overlap = p1.pos.x <= p2.pos.x + p2.size && p2.pos.x <= p1.pos.x + p1.size;
-            let overlap = v_overlap && h_overlap;
-
-            let p1_top = overlap && p1.vel.y > p2.vel.y;
-            let p1_bottom = overlap && p1.vel.y < p2.vel.y;
-            let p1_left = overlap && p1.vel.x > p2.vel.x;
-            let p1_right = overlap && p1.vel.x < p2.vel.x;
-
-            if overlap {
-                /*if p1_top {
-                    let force = Vec2 { x: (p1.vel.x + p2.vel.x) / 2.0, y: 0.0 };
-                    let pos = Vec2 { x: p1.pos.x, y: p2.pos.y - p1.size };
-                    player_forces.push((i, force, pos));
-                } else*/
-                if p1_left {
-                    let force = Vec2 {
-                        x: (p1.vel.x + p2.vel.x) / 2.0,
-                        y: (p1.vel.y + p2.vel.y) / 2.0,
-                    };
-                    let pos = Vec2 {
-                        x: p2.pos.x - p1.size,
-                        y: p1.pos.y,
-                    };
-                    player_forces.push((i, force, pos));
-                } else if p1_right {
-                    let force = Vec2 {
-                        x: (p1.vel.x + p2.vel.x) / 2.0,
-                        y: (p1.vel.y + p2.vel.y) / 2.0,
-                    };
-                    let pos = Vec2 {
-                        x: p1.pos.x,
-                        y: p1.pos.y,
-                    };
-                    player_forces.push((i, force, pos));
-                }
-            }
-        }
-    }
-    player_forces
-}
-
-fn physics(players: &mut [Player], dt: f32) {
-    for player in players {
-        player.pos.x += player.vel.x * dt;
-        player.pos.y += player.vel.y * dt;
-        player.vel.x *= FRICTION.powf(dt);
-        player.vel.y += GRAVITY * dt;
-        player.jump_timer += dt;
-
-        if player.pos.y > SCREEN_HEIGHT as f32 - player.size {
-            player.pos.y = SCREEN_HEIGHT as f32 - player.size;
-            player.vel.y = 0.0;
-        }
-        if player.pos.y < 0.0 {
-            player.pos.y = 0.0;
-            player.vel.y = 0.0;
-        }
-        if player.pos.x > SCREEN_WIDTH as f32 - player.size {
-            player.pos.x = SCREEN_WIDTH as f32 - player.size;
-            player.vel.x = 0.0;
-        }
-        if player.pos.x < 0.0 {
-            player.pos.x = 0.0;
-            player.vel.x = 0.0;
-        }
-    }
-}
-
-fn get_player_by_ip<'a>(
-    ip: &SocketAddr,
-    players: &'a mut MutexGuard<Vec<Player>>,
-) -> Option<&'a mut Player> {
-    players.iter_mut().find(|p| p.ip == *ip)
-}
-
-fn handle_move_right(player: &mut Player) {
-    player.vel.x += player.acc;
-}
-
-fn handle_move_left(player: &mut Player) {
-    player.vel.x -= player.acc;
-}
-
-fn handle_jump(player: &mut Player) {
-    if player.pos.y >= SCREEN_HEIGHT as f32 - player.size && player.jump_timer > JUMP_CD {
-        player.vel.y -= player.jump_force;
-        player.jump_timer = 0.0;
-    };
 }
