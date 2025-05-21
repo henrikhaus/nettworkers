@@ -21,6 +21,7 @@ impl PlayerState {
     }
 }
 
+#[derive(Clone)]
 pub struct GameState {
     pub players: HashMap<u32, PlayerState>,
 }

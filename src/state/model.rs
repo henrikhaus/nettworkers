@@ -12,6 +12,7 @@ impl Vec2 {
     }
 }
 
+#[derive(Clone, Copy)]
 pub struct PlayerState {
     pub id: u32,
     pub pos: Vec2,

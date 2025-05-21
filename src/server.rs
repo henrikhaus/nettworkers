@@ -125,7 +125,7 @@ impl Server {
                 let ip_to_player_guard = tick_server.ip_to_player_id.lock().unwrap();
 
                 // Let tick only mutate state
-                tick_server.tick(dt);
+                let new_state = tick_server.tick(dt);
                 tick_server.broadcast_state(&ip_to_player_guard);
                 drop(ip_to_player_guard);
 
@@ -150,11 +150,14 @@ impl Server {
         }
     }
 
-    fn tick(&mut self, dt: f32) {
+    fn tick(&self, dt: f32) -> GameState {
         let mut command_queue_guard = self.command_queue.lock().unwrap();
-        self.state.mutate(&command_queue_guard, dt);
+        let mut new_state = self.state.clone();
+        new_state.mutate(&command_queue_guard, dt);
 
         command_queue_guard.clear();
+
+        new_state
     }
 }
 
