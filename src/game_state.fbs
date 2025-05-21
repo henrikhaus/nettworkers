@@ -10,6 +10,8 @@ table Player {
     pos: Vector2;
     vel: Vector2;
     color: Color = Red;
+    jump_timer: float32;
+    size: float32;
 }
 
 table GameState {

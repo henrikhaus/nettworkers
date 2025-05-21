@@ -82,10 +82,12 @@ impl Server {
                 PlayerSchema::create(
                     &mut builder,
                     &PlayerArgs {
-                        id: 0, 
+                        id: p.1.id, 
                         pos: Some(&Vector2::new(p.1.pos.x, p.1.pos.y)),
-                        vel: None,
+                        vel: Some(&Vector2::new(p.1.vel.x, p.1.vel.y)),
                         color: p.1.color,
+                        jump_timer: p.1.jump_timer,
+                        size: p.1.size,
                     },
                 )
             })
