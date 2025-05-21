@@ -1,8 +1,10 @@
-use flatbuffers::FlatBufferBuilder;
+use std::collections::HashMap;
 
-use crate::game_state_generated;
+use flatbuffers::{root, FlatBufferBuilder};
 
-use super::GameState;
+use crate::game_state_generated::{self};
+
+use super::{GameState, PlayerState, Vec2};
 
 impl GameState {
     pub fn serialize<'a>(&self, builder: &'a mut FlatBufferBuilder) -> &'a [u8] {
@@ -14,8 +16,8 @@ impl GameState {
                     builder,
                     &game_state_generated::PlayerArgs {
                         pos: Some(&game_state_generated::Vector2::new(p.1.pos.x, p.1.pos.y)),
-                        vel: None,
-                        acc: None,
+                        vel: Some(&game_state_generated::Vector2::new(p.1.vel.x, p.1.vel.y)),
+                        acc: Some(&game_state_generated::Vector2::new(p.1.vel.x, p.1.vel.y)),
                         color: p.1.color,
                     },
                 )
@@ -32,5 +34,33 @@ impl GameState {
         builder.finish(players_list, None);
         let bytes = builder.finished_data();
         bytes
+    }
+
+    pub fn deserialize(packet: &[u8]) -> GameState {
+        let game_state =
+            root::<game_state_generated::GameState>(packet).expect("No players received.");
+
+        let players: HashMap<u32, PlayerState> = game_state
+            .players()
+            .expect("Should have players array")
+            .into_iter()
+            .map(|p|  PlayerState {
+                id: 0,
+                pos: p.pos.into(),
+                vel: p.vel.into(),
+                acc: p.acc.into(),
+                jump_force: p.jump_force,
+                jump_timer: p.jump_timer,
+                color: p.color,
+                size: p.size,
+            });
+
+        GameState { players }
+    }
+}
+
+impl From<game_state_generated::Vector2> for Vec2 {
+    fn from(value: game_state_generated::Vector2) -> Self {
+        Vec2 { x: 0., y: 0. }
     }
 }
