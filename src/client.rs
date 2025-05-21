@@ -41,7 +41,7 @@ mod player_commands_generated;
 use crate::player_commands_generated::{PlayerCommand, PlayerCommands, PlayerCommandsArgs};
 
 const CLIENT_ADDR: &str = "127.0.0.1:0";
-const SERVER_ADDR: &str = "192.168.58.93:9000";
+const SERVER_ADDR: &str = "127.0.0.1:9000";
 const PLAYER_SIZE: f32 = 16.0;
 const SCREEN_WIDTH: f32 = 640.0;
 const SCREEN_HEIGHT: f32 = 360.0;
