@@ -12,8 +12,8 @@ table Player {
     color: Color = Red;
 }
 
-table PlayersList {
+table GameState {
   players: [Player];
 }
 
-root_type PlayersList;
+root_type GameState;
