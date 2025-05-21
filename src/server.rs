@@ -20,11 +20,10 @@ mod player_commands_generated;
 use crate::player_commands_generated::{PlayerCommand, PlayerCommands};
 
 const MAX_PLAYERS: usize = 10;
-const TICK_DURATION: Duration = Duration::from_millis(1000);
+const TICK_DURATION: Duration = Duration::from_millis(333);
 const SERVER_ADDR: &str = "127.0.0.1:9000";
 
 struct Server {
-    state: GameState,
     command_queue: Arc<Mutex<VecDeque<(u32, PlayerCommand)>>>,
     ip_to_player_id: Arc<Mutex<HashMap<SocketAddr, u32>>>,
     socket: UdpSocket,
@@ -35,7 +34,6 @@ impl Server {
         let socket = UdpSocket::bind(SERVER_ADDR)?;
         println!("UDP running on {}...", SERVER_ADDR);
         Ok(Server {
-            state: GameState::new(),
             command_queue: Arc::new(Mutex::new(VecDeque::new())),
             ip_to_player_id: Arc::new(Mutex::new(HashMap::new())),
             socket,
@@ -74,11 +72,10 @@ impl Server {
         new_player_id
     }
 
-    fn broadcast_state(&self, ip_to_player_id: &HashMap<SocketAddr, u32>) {
+    fn broadcast_state(&self, game_state: &GameState, ip_to_player_id: &HashMap<SocketAddr, u32>) {
         // Send data to client
         let mut builder = FlatBufferBuilder::with_capacity(2048);
-        let players_offsets: Vec<_> = self
-            .state
+        let players_offsets: Vec<_> = game_state
             .players
             .iter()
             .map(|p| {
@@ -112,6 +109,7 @@ impl Server {
     fn start_tick_thread(self: &Arc<Self>) {
         println!("Starting tick thread!");
 
+        let mut game_state = GameState::new();
         let tick_server = Arc::clone(self);
 
         thread::spawn(move || {
@@ -125,9 +123,15 @@ impl Server {
                 let ip_to_player_guard = tick_server.ip_to_player_id.lock().unwrap();
 
                 // Let tick only mutate state
-                let new_state = tick_server.tick(dt);
-                tick_server.broadcast_state(&ip_to_player_guard);
+                tick_server.tick(&mut game_state, dt);
+                tick_server.broadcast_state(&game_state, &ip_to_player_guard);
                 drop(ip_to_player_guard);
+
+                for (player_id, player) in &game_state.players {
+                    println!("Player {}", player_id);
+                    println!("{:?}", player.vel.y);
+                    println!("{:?}", player.vel.x);
+                }
 
                 let sleep_time = TICK_DURATION.checked_sub(start.elapsed());
                 if let Some(sleep_time) = sleep_time {
@@ -150,14 +154,10 @@ impl Server {
         }
     }
 
-    fn tick(&self, dt: f32) -> GameState {
+    fn tick(&self, game_state: &mut GameState, dt: f32) {
         let mut command_queue_guard = self.command_queue.lock().unwrap();
-        let mut new_state = self.state.clone();
-        new_state.mutate(&command_queue_guard, dt);
-
+        game_state.mutate(&command_queue_guard, dt);
         command_queue_guard.clear();
-
-        new_state
     }
 }
 

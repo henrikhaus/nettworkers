@@ -34,11 +34,9 @@ impl GameState {
     }
 
     pub fn mutate(&mut self, command_queue: &VecDeque<(u32, PlayerCommand)>, dt: f32) {
-        println!("Mutating!");
-
         for (player_id, command) in command_queue {
             // Get player, add to game state if not exists
-            let player = match self.players.get_mut(&player_id) {
+            let player = match self.players.get_mut(player_id) {
                 Some(player) => player,
                 None => {
                     let new_player = PlayerState::new(*player_id);
@@ -48,10 +46,10 @@ impl GameState {
             };
 
             // Execute command
-            match command {
-                &PlayerCommand::Move_right => player.handle_move_right(),
-                &PlayerCommand::Move_left => player.handle_move_left(),
-                &PlayerCommand::Jump => self.players.get_mut(&player_id).unwrap().handle_jump(),
+            match *command {
+                PlayerCommand::Move_right => player.handle_move_right(),
+                PlayerCommand::Move_left => player.handle_move_left(),
+                PlayerCommand::Jump => self.players.get_mut(player_id).unwrap().handle_jump(),
                 _ => {}
             }
         }
