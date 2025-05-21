@@ -12,9 +12,6 @@ mod state;
 #[allow(dead_code, unused_imports)]
 #[path = "../game_state_generated.rs"]
 mod game_state_generated;
-use crate::game_state_generated::{
-    GameState as GameStateSchema, Player as PlayerSchema, PlayerArgs, Vector2,
-};
 #[path = "../player_commands_generated.rs"]
 mod player_commands_generated;
 use crate::player_commands_generated::{PlayerCommand, PlayerCommands};
@@ -73,36 +70,9 @@ impl Server {
     }
 
     fn broadcast_state(&self, game_state: &GameState, ip_to_player_id: &HashMap<SocketAddr, u32>) {
-        // Send data to client
         let mut builder = FlatBufferBuilder::with_capacity(2048);
-        let players_offsets: Vec<_> = game_state
-            .players
-            .iter()
-            .map(|p| {
-                PlayerSchema::create(
-                    &mut builder,
-                    &PlayerArgs {
-                        id: p.1.id, 
-                        pos: Some(&Vector2::new(p.1.pos.x, p.1.pos.y)),
-                        vel: Some(&Vector2::new(p.1.vel.x, p.1.vel.y)),
-                        color: p.1.color,
-                        jump_timer: p.1.jump_timer,
-                        size: p.1.size,
-                    },
-                )
-            })
-            .collect();
-
-        let players_vec = builder.create_vector(&players_offsets);
-        let players_list = GameStateSchema::create(
-            &mut builder,
-            &game_state_generated::GameStateArgs {
-                players: Some(players_vec),
-            },
-        );
-        builder.finish(players_list, None);
-        let bytes = builder.finished_data();
-
+        let bytes = game_state.serialize(&mut builder);
+        // Send data to client
         for (ip, _) in ip_to_player_id {
             let _ = self.socket.send_to(bytes, ip);
         }
