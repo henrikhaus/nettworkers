@@ -1,10 +1,9 @@
-use flatbuffers;
 use flatbuffers::{root, FlatBufferBuilder, Push};
 use macroquad::prelude::*;
 use std::net::UdpSocket;
 use std::sync::{Arc, Mutex, MutexGuard};
 use std::thread;
-use std::time::Duration;
+use macroquad::color::hsl_to_rgb;
 
 #[allow(dead_code, unused_imports)]
 #[path = "../players_list_generated.rs"]
@@ -15,8 +14,13 @@ mod player_commands_generated;
 use crate::player_commands_generated::{PlayerCommand, PlayerCommands, PlayerCommandsArgs};
 
 const SERVER_ADDR: &str = "127.0.0.1:9000";
-// const CLIENT_ADDR: &str = "127.0.0.1:3001";
 const PLAYER_SIZE: f32 = 16.0;
+const SCREEN_WIDTH: f32 = 640.0;
+const SCREEN_HEIGHT: f32 = 360.0;
+
+const SCALE: f32 = 1.0;
+const FULLSCREEN: bool = false;
+
 
 struct ClientPlayer {
     id: Option<usize>,
@@ -30,19 +34,13 @@ struct OwnedPlayer {
     color: Color,
 }
 
-struct Resolution {
-    width: f32,
-    height: f32,
-    scale: f32,
-}
-
 fn window_conf() -> Conf {
     Conf {
         window_title: "Multi".to_owned(),
-        window_width: 640,
-        window_height: 360,
+        window_width: (SCREEN_WIDTH * SCALE) as i32,
+        window_height: (SCREEN_HEIGHT * SCALE) as i32,
         high_dpi: false,
-        fullscreen: false,
+        fullscreen: FULLSCREEN,
         sample_count: 1,
         window_resizable: true,
         icon: None,
@@ -72,16 +70,6 @@ async fn main() {
         color: Color::Red,
     };
 
-    let mut scale = 1.0;
-    change_resolution(
-        Resolution {
-            width: 640.0,
-            height: 360.0,
-            scale: 1.0,
-        },
-        &mut scale,
-    );
-
     let (_client_addr, socket) = find_available_client_addr(3001, 3010);
     let socket = Arc::new(socket);
     let players: Arc<Mutex<Vec<OwnedPlayer>>> = Arc::new(Mutex::new(Vec::new()));
@@ -104,6 +92,8 @@ async fn main() {
         }
     });
 
+    let mut scale;
+
     loop {
         input_handler(&mut commands);
         if !commands.is_empty() {
@@ -124,7 +114,17 @@ async fn main() {
         commands.clear();
 
         let players_guard = tick_players.lock().unwrap();
-        render(&players_guard, scale);
+
+        let w = screen_width();
+        let h = screen_height();
+        let scale_x = w / SCREEN_WIDTH;
+        let scale_y = h / SCREEN_HEIGHT;
+        scale = scale_x.min(scale_y);
+        let draw_w = SCREEN_WIDTH * scale;
+        let draw_h = SCREEN_HEIGHT * scale;
+        let offset = vec2((w - draw_w) / 2.0, (h - draw_h) / 2.0);
+
+        render(&players_guard, scale, offset);
         drop(players_guard);
         next_frame().await;
     }
@@ -136,24 +136,25 @@ fn handle_packet(packet: &[u8], players: &mut Vec<OwnedPlayer>) {
         players.clear();
         for p in player_vec {
             players.push(OwnedPlayer {
-                x: p.pos_x(),
-                y: p.pos_y(),
+                x: p.pos().unwrap().x(),
+                y: p.pos().unwrap().y(),
                 color: p.color(),
             });
         }
     }
 }
 
-fn render(players: &MutexGuard<Vec<OwnedPlayer>>, scale: f32) {
+fn render(players: &MutexGuard<Vec<OwnedPlayer>>, scale: f32, offset: Vec2) {
     clear_background(BLACK);
+    draw_rectangle(offset.x, offset.y, SCREEN_WIDTH * scale, SCREEN_HEIGHT * scale, hsl_to_rgb(0.0,0.0,0.1));
     let colors = [RED, BLUE, GREEN, PURPLE, ORANGE, BEIGE, PINK];
-    for (index, p) in players.iter().enumerate() {
+    for (i, p) in players.iter().enumerate() {
         draw_rectangle(
-            p.x * scale,
-            p.y * scale,
+            offset.x + p.x * scale,
+            offset.y + p.y * scale,
             PLAYER_SIZE * scale,
             PLAYER_SIZE * scale,
-            colors[index % colors.len()],
+            colors[i % colors.len()],
         );
     }
 }
@@ -168,9 +169,4 @@ fn input_handler(commands: &mut Vec<PlayerCommand>) {
     if is_key_down(KeyCode::Up) || is_key_down(KeyCode::W) || is_key_down(KeyCode::Space) {
         commands.push(PlayerCommand::Jump);
     }
-}
-
-fn change_resolution(resolution: Resolution, scale: &mut f32) {
-    request_new_screen_size(resolution.width, resolution.height);
-    *scale = resolution.scale;
 }
