@@ -50,7 +50,6 @@ impl GameState {
                 (
                     p.id(),
                     PlayerState {
-                        id: p.id(),
                         pos: p.pos().unwrap().to_owned().into(),
                         vel: p.vel().unwrap().to_owned().into(),
                         jump_timer: p.jump_timer(),
@@ -67,6 +66,6 @@ impl GameState {
 
 impl From<game_state_generated::Vector2> for Vec2 {
     fn from(value: game_state_generated::Vector2) -> Self {
-        Vec2 { x: 0., y: 0. }
+        Vec2 { x: value.x(), y: value.y() }
     }
 }

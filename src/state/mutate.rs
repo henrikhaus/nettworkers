@@ -1,36 +1,11 @@
-use std::collections::{HashMap, VecDeque};
+use std::collections::VecDeque;
 
-use super::model::*;
-use super::physics::*;
-use crate::{game_state_generated::Color, player_commands_generated::PlayerCommand};
+use super::{physics::*, GameState, PlayerState};
+use crate::player_commands_generated::PlayerCommand;
 
 use super::{JUMP_CD, JUMP_FORCE, PLAYER_ACCELERATION, SCREEN_HEIGHT};
 
-impl PlayerState {
-    fn new(id: u32) -> PlayerState {
-        PlayerState {
-            id,
-            pos: Vec2::zero(),
-            vel: Vec2::zero(),
-            jump_timer: 0.0,
-            color: Color::Red,
-            size: 16.0,
-        }
-    }
-}
-
-#[derive(Clone)]
-pub struct GameState {
-    pub players: HashMap<u32, PlayerState>,
-}
-
 impl GameState {
-    pub fn new() -> GameState {
-        GameState {
-            players: HashMap::new(),
-        }
-    }
-
     pub fn mutate(&mut self, command_queue: &VecDeque<(u32, PlayerCommand)>, dt: f32) {
         for (player_id, command) in command_queue {
             // Get player, add to game state if not exists
