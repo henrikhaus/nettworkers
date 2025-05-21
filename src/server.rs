@@ -82,6 +82,7 @@ impl Server {
                 PlayerSchema::create(
                     &mut builder,
                     &PlayerArgs {
+                        id: 0, 
                         pos: Some(&Vector2::new(p.1.pos.x, p.1.pos.y)),
                         vel: None,
                         color: p.1.color,
