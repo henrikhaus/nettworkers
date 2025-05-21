@@ -12,7 +12,7 @@ impl GameState {
             let player = match self.players.get_mut(player_id) {
                 Some(player) => player,
                 None => {
-                    let new_player = PlayerState::new(*player_id);
+                    let new_player = PlayerState::new();
                     self.players.insert(*player_id, new_player);
                     self.players.get_mut(player_id).unwrap()
                 }

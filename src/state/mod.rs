@@ -4,8 +4,6 @@ mod physics;
 
 use std::collections::HashMap;
 
-pub use mutate::*;
-
 use crate::game_state_generated::Color;
 
 // Settings
@@ -44,9 +42,8 @@ pub struct PlayerState {
 }
 
 impl PlayerState {
-    fn new(id: u32) -> PlayerState {
+    fn new() -> PlayerState {
         PlayerState {
-            id,
             pos: Vec2::zero(),
             vel: Vec2::zero(),
             jump_timer: 0.0,
