@@ -73,34 +73,9 @@ impl Server {
     }
 
     fn broadcast_state(&self, game_state: &GameState, ip_to_player_id: &HashMap<SocketAddr, u32>) {
-        // Send data to client
         let mut builder = FlatBufferBuilder::with_capacity(2048);
-        let players_offsets: Vec<_> = game_state
-            .players
-            .iter()
-            .map(|p| {
-                PlayerSchema::create(
-                    &mut builder,
-                    &PlayerArgs {
-                        pos: Some(&Vector2::new(p.1.pos.x, p.1.pos.y)),
-                        vel: None,
-                        acc: None,
-                        color: p.1.color,
-                    },
-                )
-            })
-            .collect();
-
-        let players_vec = builder.create_vector(&players_offsets);
-        let players_list = GameStateSchema::create(
-            &mut builder,
-            &game_state_generated::GameStateArgs {
-                players: Some(players_vec),
-            },
-        );
-        builder.finish(players_list, None);
-        let bytes = builder.finished_data();
-
+        let bytes = game_state.serialize(&mut builder);
+        // Send data to client
         for (ip, _) in ip_to_player_id {
             let _ = self.socket.send_to(bytes, ip);
         }

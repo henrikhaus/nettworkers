@@ -91,7 +91,3 @@ impl PlayerState {
         };
     }
 }
-
-impl GameState {
-    fn serialize(&self) {}
-}

@@ -1,10 +1,12 @@
+mod connector;
 mod model;
 mod physics;
 mod state;
 
+pub use connector::*;
 pub use model::*;
-pub use state::*;
 pub use physics::*;
+pub use state::*;
 
 // Settings
 pub const SCREEN_HEIGHT: usize = 360;
