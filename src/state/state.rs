@@ -19,5 +19,5 @@ pub struct GameState {
 }
 
 impl GameState {
-    pub fn update(&mut self)
+    pub fn mutate(&mut self, commands[])
 }

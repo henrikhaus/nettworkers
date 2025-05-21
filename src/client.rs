@@ -1,9 +1,9 @@
 use flatbuffers::{root, FlatBufferBuilder, Push};
+use macroquad::color::hsl_to_rgb;
 use macroquad::prelude::*;
 use std::net::UdpSocket;
 use std::sync::{Arc, Mutex, MutexGuard};
 use std::thread;
-use macroquad::color::hsl_to_rgb;
 
 #[allow(dead_code, unused_imports)]
 #[path = "../players_list_generated.rs"]
@@ -20,7 +20,6 @@ const SCREEN_HEIGHT: f32 = 360.0;
 
 const SCALE: f32 = 1.0;
 const FULLSCREEN: bool = false;
-
 
 struct ClientPlayer {
     id: Option<usize>,
@@ -146,7 +145,13 @@ fn handle_packet(packet: &[u8], players: &mut Vec<OwnedPlayer>) {
 
 fn render(players: &MutexGuard<Vec<OwnedPlayer>>, scale: f32, offset: Vec2) {
     clear_background(BLACK);
-    draw_rectangle(offset.x, offset.y, SCREEN_WIDTH * scale, SCREEN_HEIGHT * scale, hsl_to_rgb(0.0,0.0,0.1));
+    draw_rectangle(
+        offset.x,
+        offset.y,
+        SCREEN_WIDTH * scale,
+        SCREEN_HEIGHT * scale,
+        hsl_to_rgb(0.0, 0.0, 0.1),
+    );
     let colors = [RED, BLUE, GREEN, PURPLE, ORANGE, BEIGE, PINK];
     for (i, p) in players.iter().enumerate() {
         draw_rectangle(
