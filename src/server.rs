@@ -1,9 +1,9 @@
 use flatbuffers::{root, FlatBufferBuilder};
 use state::GameState;
 use std::collections::{HashMap, VecDeque};
-use std::io::Result;
+use std::io;
 use std::net::{SocketAddr, UdpSocket};
-use std::sync::{Arc, Mutex, MutexGuard};
+use std::sync::{Arc, Mutex};
 use std::thread;
 use std::thread::sleep;
 use std::time::{Duration, Instant};
@@ -27,12 +27,12 @@ struct Server {
     state: GameState,
     command_queue: Arc<Mutex<VecDeque<(u32, PlayerCommand)>>>,
     ip_to_player_id: Arc<Mutex<HashMap<SocketAddr, u32>>>,
-    socket: Arc<UdpSocket>,
+    socket: UdpSocket,
 }
 
 impl Server {
-    fn new() -> Result<Server> {
-        let socket = Arc::new(UdpSocket::bind(SERVER_ADDR)?);
+    fn new() -> io::Result<Server> {
+        let socket = UdpSocket::bind(SERVER_ADDR)?;
         println!("UDP running on {}...", SERVER_ADDR);
         Ok(Server {
             state: GameState::new(),
@@ -75,7 +75,7 @@ impl Server {
         new_player_id
     }
 
-    fn broadcast_state(&self, socket: &UdpSocket, ip_to_player: HashMap<SocketAddr, u32>) {
+    fn broadcast_state(&self, ip_to_player_id: &HashMap<SocketAddr, u32>) {
         // Send data to client
         let mut builder = FlatBufferBuilder::with_capacity(2048);
         let players_offsets: Vec<_> = self
@@ -105,18 +105,15 @@ impl Server {
         builder.finish(players_list, None);
         let bytes = builder.finished_data();
 
-        let ip_to_player_id_guard = self.ip_to_player_id
-        for (ip, _) in &self.ip_to_player_id {
-            let _ = socket.send_to(bytes, ip);
+        for (ip, _) in ip_to_player_id {
+            let _ = self.socket.send_to(bytes, ip);
         }
     }
 
-    fn start_tick_thread(&self) {
+    fn start_tick_thread(self: &Arc<Self>) {
         println!("Starting tick thread!");
 
-        let tick_command_queue = Arc::clone(&self.command_queue);
-        let tick_socket = Arc::clone(&self.socket);
-        let tick_ip_to_player = Arc::clone(&self.ip_to_player_id);
+        let tick_server = Arc::clone(self);
 
         thread::spawn(move || {
             let mut last_tick = Instant::now();
@@ -126,14 +123,14 @@ impl Server {
                 let dt = now.duration_since(last_tick).as_secs_f32();
                 last_tick = now;
 
-                let mut command_queue_guard = tick_command_queue.lock().unwrap();
-                let ip_to_player_guard = tick_ip_to_player.lock().unwrap();
+                let mut command_queue_guard = tick_server.command_queue.lock().unwrap();
+                let ip_to_player_guard = tick_server.ip_to_player_id.lock().unwrap();
 
                 // Let tick only mutate state
-                self.tick(&mut command_queue_guard, dt);
-                self.broadcast_state(&tick_socket, ip_to_player_guard);
-                drop(players_guard);
+                tick_server.tick(&mut command_queue_guard, dt);
+                tick_server.broadcast_state(&ip_to_player_guard);
                 drop(command_queue_guard);
+                drop(ip_to_player_guard);
 
                 let sleep_time = TICK_DURATION.checked_sub(start.elapsed());
                 if let Some(sleep_time) = sleep_time {
@@ -143,11 +140,11 @@ impl Server {
         });
     }
 
-    pub fn run(self) -> Result<()> {
+    pub fn run(self: Arc<Self>) -> io::Result<()> {
         self.start_tick_thread();
 
         // Listen for commands
-        let socket = Arc::clone(&self.socket);
+        let socket = self.socket.try_clone()?;
         loop {
             let mut buf = [0u8; 2048];
             let (amt, src_addr) = socket.recv_from(&mut buf)?;
@@ -194,7 +191,7 @@ impl Server {
     }
 }
 
-fn main() -> Result<()> {
-    let server = Server::new()?;
+fn main() -> io::Result<()> {
+    let server = Arc::new(Server::new()?);
     server.run()
 }
