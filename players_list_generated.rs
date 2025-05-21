@@ -118,6 +118,134 @@ impl<'a> flatbuffers::Verifiable for Color {
 }
 
 impl flatbuffers::SimpleToVerifyInSlice for Color {}
+// struct Vector2, aligned to 4
+#[repr(transparent)]
+#[derive(Clone, Copy, PartialEq)]
+pub struct Vector2(pub [u8; 8]);
+impl Default for Vector2 { 
+  fn default() -> Self { 
+    Self([0; 8])
+  }
+}
+impl core::fmt::Debug for Vector2 {
+  fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
+    f.debug_struct("Vector2")
+      .field("x", &self.x())
+      .field("y", &self.y())
+      .finish()
+  }
+}
+
+impl flatbuffers::SimpleToVerifyInSlice for Vector2 {}
+impl<'a> flatbuffers::Follow<'a> for Vector2 {
+  type Inner = &'a Vector2;
+  #[inline]
+  unsafe fn follow(buf: &'a [u8], loc: usize) -> Self::Inner {
+    <&'a Vector2>::follow(buf, loc)
+  }
+}
+impl<'a> flatbuffers::Follow<'a> for &'a Vector2 {
+  type Inner = &'a Vector2;
+  #[inline]
+  unsafe fn follow(buf: &'a [u8], loc: usize) -> Self::Inner {
+    flatbuffers::follow_cast_ref::<Vector2>(buf, loc)
+  }
+}
+impl<'b> flatbuffers::Push for Vector2 {
+    type Output = Vector2;
+    #[inline]
+    unsafe fn push(&self, dst: &mut [u8], _written_len: usize) {
+        let src = ::core::slice::from_raw_parts(self as *const Vector2 as *const u8, <Self as flatbuffers::Push>::size());
+        dst.copy_from_slice(src);
+    }
+    #[inline]
+    fn alignment() -> flatbuffers::PushAlignment {
+        flatbuffers::PushAlignment::new(4)
+    }
+}
+
+impl<'a> flatbuffers::Verifiable for Vector2 {
+  #[inline]
+  fn run_verifier(
+    v: &mut flatbuffers::Verifier, pos: usize
+  ) -> Result<(), flatbuffers::InvalidFlatbuffer> {
+    use self::flatbuffers::Verifiable;
+    v.in_buffer::<Self>(pos)
+  }
+}
+
+impl<'a> Vector2 {
+  #[allow(clippy::too_many_arguments)]
+  pub fn new(
+    x: f32,
+    y: f32,
+  ) -> Self {
+    let mut s = Self([0; 8]);
+    s.set_x(x);
+    s.set_y(y);
+    s
+  }
+
+  pub fn x(&self) -> f32 {
+    let mut mem = core::mem::MaybeUninit::<<f32 as EndianScalar>::Scalar>::uninit();
+    // Safety:
+    // Created from a valid Table for this object
+    // Which contains a valid value in this slot
+    EndianScalar::from_little_endian(unsafe {
+      core::ptr::copy_nonoverlapping(
+        self.0[0..].as_ptr(),
+        mem.as_mut_ptr() as *mut u8,
+        core::mem::size_of::<<f32 as EndianScalar>::Scalar>(),
+      );
+      mem.assume_init()
+    })
+  }
+
+  pub fn set_x(&mut self, x: f32) {
+    let x_le = x.to_little_endian();
+    // Safety:
+    // Created from a valid Table for this object
+    // Which contains a valid value in this slot
+    unsafe {
+      core::ptr::copy_nonoverlapping(
+        &x_le as *const _ as *const u8,
+        self.0[0..].as_mut_ptr(),
+        core::mem::size_of::<<f32 as EndianScalar>::Scalar>(),
+      );
+    }
+  }
+
+  pub fn y(&self) -> f32 {
+    let mut mem = core::mem::MaybeUninit::<<f32 as EndianScalar>::Scalar>::uninit();
+    // Safety:
+    // Created from a valid Table for this object
+    // Which contains a valid value in this slot
+    EndianScalar::from_little_endian(unsafe {
+      core::ptr::copy_nonoverlapping(
+        self.0[4..].as_ptr(),
+        mem.as_mut_ptr() as *mut u8,
+        core::mem::size_of::<<f32 as EndianScalar>::Scalar>(),
+      );
+      mem.assume_init()
+    })
+  }
+
+  pub fn set_y(&mut self, x: f32) {
+    let x_le = x.to_little_endian();
+    // Safety:
+    // Created from a valid Table for this object
+    // Which contains a valid value in this slot
+    unsafe {
+      core::ptr::copy_nonoverlapping(
+        &x_le as *const _ as *const u8,
+        self.0[4..].as_mut_ptr(),
+        core::mem::size_of::<<f32 as EndianScalar>::Scalar>(),
+      );
+    }
+  }
+
+}
+
 pub enum PlayerOffset {}
 #[derive(Copy, Clone, PartialEq)]
 
@@ -134,13 +262,10 @@ impl<'a> flatbuffers::Follow<'a> for Player<'a> {
 }
 
 impl<'a> Player<'a> {
-  pub const VT_POS_X: flatbuffers::VOffsetT = 4;
-  pub const VT_POS_Y: flatbuffers::VOffsetT = 6;
-  pub const VT_VEL_X: flatbuffers::VOffsetT = 8;
-  pub const VT_VEL_Y: flatbuffers::VOffsetT = 10;
-  pub const VT_ACC_X: flatbuffers::VOffsetT = 12;
-  pub const VT_ACC_Y: flatbuffers::VOffsetT = 14;
-  pub const VT_COLOR: flatbuffers::VOffsetT = 16;
+  pub const VT_POS: flatbuffers::VOffsetT = 4;
+  pub const VT_VEL: flatbuffers::VOffsetT = 6;
+  pub const VT_ACC: flatbuffers::VOffsetT = 8;
+  pub const VT_COLOR: flatbuffers::VOffsetT = 10;
 
   #[inline]
   pub unsafe fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
@@ -149,61 +274,37 @@ impl<'a> Player<'a> {
   #[allow(unused_mut)]
   pub fn create<'bldr: 'args, 'args: 'mut_bldr, 'mut_bldr, A: flatbuffers::Allocator + 'bldr>(
     _fbb: &'mut_bldr mut flatbuffers::FlatBufferBuilder<'bldr, A>,
-    args: &'args PlayerArgs
+    args: &'args PlayerArgs<'args>
   ) -> flatbuffers::WIPOffset<Player<'bldr>> {
     let mut builder = PlayerBuilder::new(_fbb);
-    builder.add_acc_y(args.acc_y);
-    builder.add_acc_x(args.acc_x);
-    builder.add_vel_y(args.vel_y);
-    builder.add_vel_x(args.vel_x);
-    builder.add_pos_y(args.pos_y);
-    builder.add_pos_x(args.pos_x);
+    if let Some(x) = args.acc { builder.add_acc(x); }
+    if let Some(x) = args.vel { builder.add_vel(x); }
+    if let Some(x) = args.pos { builder.add_pos(x); }
     builder.add_color(args.color);
     builder.finish()
   }
 
 
   #[inline]
-  pub fn pos_x(&self) -> f32 {
+  pub fn pos(&self) -> Option<&'a Vector2> {
     // Safety:
     // Created from valid Table for this object
     // which contains a valid value in this slot
-    unsafe { self._tab.get::<f32>(Player::VT_POS_X, Some(0.0)).unwrap()}
+    unsafe { self._tab.get::<Vector2>(Player::VT_POS, None)}
   }
   #[inline]
-  pub fn pos_y(&self) -> f32 {
+  pub fn vel(&self) -> Option<&'a Vector2> {
     // Safety:
     // Created from valid Table for this object
     // which contains a valid value in this slot
-    unsafe { self._tab.get::<f32>(Player::VT_POS_Y, Some(0.0)).unwrap()}
+    unsafe { self._tab.get::<Vector2>(Player::VT_VEL, None)}
   }
   #[inline]
-  pub fn vel_x(&self) -> f32 {
+  pub fn acc(&self) -> Option<&'a Vector2> {
     // Safety:
     // Created from valid Table for this object
     // which contains a valid value in this slot
-    unsafe { self._tab.get::<f32>(Player::VT_VEL_X, Some(0.0)).unwrap()}
-  }
-  #[inline]
-  pub fn vel_y(&self) -> f32 {
-    // Safety:
-    // Created from valid Table for this object
-    // which contains a valid value in this slot
-    unsafe { self._tab.get::<f32>(Player::VT_VEL_Y, Some(0.0)).unwrap()}
-  }
-  #[inline]
-  pub fn acc_x(&self) -> f32 {
-    // Safety:
-    // Created from valid Table for this object
-    // which contains a valid value in this slot
-    unsafe { self._tab.get::<f32>(Player::VT_ACC_X, Some(0.0)).unwrap()}
-  }
-  #[inline]
-  pub fn acc_y(&self) -> f32 {
-    // Safety:
-    // Created from valid Table for this object
-    // which contains a valid value in this slot
-    unsafe { self._tab.get::<f32>(Player::VT_ACC_Y, Some(0.0)).unwrap()}
+    unsafe { self._tab.get::<Vector2>(Player::VT_ACC, None)}
   }
   #[inline]
   pub fn color(&self) -> Color {
@@ -221,36 +322,27 @@ impl flatbuffers::Verifiable for Player<'_> {
   ) -> Result<(), flatbuffers::InvalidFlatbuffer> {
     use self::flatbuffers::Verifiable;
     v.visit_table(pos)?
-     .visit_field::<f32>("pos_x", Self::VT_POS_X, false)?
-     .visit_field::<f32>("pos_y", Self::VT_POS_Y, false)?
-     .visit_field::<f32>("vel_x", Self::VT_VEL_X, false)?
-     .visit_field::<f32>("vel_y", Self::VT_VEL_Y, false)?
-     .visit_field::<f32>("acc_x", Self::VT_ACC_X, false)?
-     .visit_field::<f32>("acc_y", Self::VT_ACC_Y, false)?
+     .visit_field::<Vector2>("pos", Self::VT_POS, false)?
+     .visit_field::<Vector2>("vel", Self::VT_VEL, false)?
+     .visit_field::<Vector2>("acc", Self::VT_ACC, false)?
      .visit_field::<Color>("color", Self::VT_COLOR, false)?
      .finish();
     Ok(())
   }
 }
-pub struct PlayerArgs {
-    pub pos_x: f32,
-    pub pos_y: f32,
-    pub vel_x: f32,
-    pub vel_y: f32,
-    pub acc_x: f32,
-    pub acc_y: f32,
+pub struct PlayerArgs<'a> {
+    pub pos: Option<&'a Vector2>,
+    pub vel: Option<&'a Vector2>,
+    pub acc: Option<&'a Vector2>,
     pub color: Color,
 }
-impl<'a> Default for PlayerArgs {
+impl<'a> Default for PlayerArgs<'a> {
   #[inline]
   fn default() -> Self {
     PlayerArgs {
-      pos_x: 0.0,
-      pos_y: 0.0,
-      vel_x: 0.0,
-      vel_y: 0.0,
-      acc_x: 0.0,
-      acc_y: 0.0,
+      pos: None,
+      vel: None,
+      acc: None,
       color: Color::Red,
     }
   }
@@ -262,28 +354,16 @@ pub struct PlayerBuilder<'a: 'b, 'b, A: flatbuffers::Allocator + 'a> {
 }
 impl<'a: 'b, 'b, A: flatbuffers::Allocator + 'a> PlayerBuilder<'a, 'b, A> {
   #[inline]
-  pub fn add_pos_x(&mut self, pos_x: f32) {
-    self.fbb_.push_slot::<f32>(Player::VT_POS_X, pos_x, 0.0);
+  pub fn add_pos(&mut self, pos: &Vector2) {
+    self.fbb_.push_slot_always::<&Vector2>(Player::VT_POS, pos);
   }
   #[inline]
-  pub fn add_pos_y(&mut self, pos_y: f32) {
-    self.fbb_.push_slot::<f32>(Player::VT_POS_Y, pos_y, 0.0);
+  pub fn add_vel(&mut self, vel: &Vector2) {
+    self.fbb_.push_slot_always::<&Vector2>(Player::VT_VEL, vel);
   }
   #[inline]
-  pub fn add_vel_x(&mut self, vel_x: f32) {
-    self.fbb_.push_slot::<f32>(Player::VT_VEL_X, vel_x, 0.0);
-  }
-  #[inline]
-  pub fn add_vel_y(&mut self, vel_y: f32) {
-    self.fbb_.push_slot::<f32>(Player::VT_VEL_Y, vel_y, 0.0);
-  }
-  #[inline]
-  pub fn add_acc_x(&mut self, acc_x: f32) {
-    self.fbb_.push_slot::<f32>(Player::VT_ACC_X, acc_x, 0.0);
-  }
-  #[inline]
-  pub fn add_acc_y(&mut self, acc_y: f32) {
-    self.fbb_.push_slot::<f32>(Player::VT_ACC_Y, acc_y, 0.0);
+  pub fn add_acc(&mut self, acc: &Vector2) {
+    self.fbb_.push_slot_always::<&Vector2>(Player::VT_ACC, acc);
   }
   #[inline]
   pub fn add_color(&mut self, color: Color) {
@@ -307,12 +387,9 @@ impl<'a: 'b, 'b, A: flatbuffers::Allocator + 'a> PlayerBuilder<'a, 'b, A> {
 impl core::fmt::Debug for Player<'_> {
   fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
     let mut ds = f.debug_struct("Player");
-      ds.field("pos_x", &self.pos_x());
-      ds.field("pos_y", &self.pos_y());
-      ds.field("vel_x", &self.vel_x());
-      ds.field("vel_y", &self.vel_y());
-      ds.field("acc_x", &self.acc_x());
-      ds.field("acc_y", &self.acc_y());
+      ds.field("pos", &self.pos());
+      ds.field("vel", &self.vel());
+      ds.field("acc", &self.acc());
       ds.field("color", &self.color());
       ds.finish()
   }

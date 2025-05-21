@@ -136,8 +136,8 @@ fn handle_packet(packet: &[u8], players: &mut Vec<OwnedPlayer>) {
         players.clear();
         for p in player_vec {
             players.push(OwnedPlayer {
-                x: p.pos_x(),
-                y: p.pos_y(),
+                x: p.pos().unwrap().x(),
+                y: p.pos().unwrap().y(),
                 color: p.color(),
             });
         }

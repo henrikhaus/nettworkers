@@ -2,7 +2,6 @@ use flatbuffers::{root, FlatBufferBuilder};
 use std::io::Result;
 use std::net::{SocketAddr, UdpSocket};
 use std::ops::Index;
-use std::os::unix::raw::time_t;
 use std::sync::{Arc, Mutex, MutexGuard};
 use std::thread;
 use std::thread::sleep;
@@ -11,7 +10,7 @@ use std::time::{Duration, Instant};
 #[allow(dead_code, unused_imports)]
 #[path = "../players_list_generated.rs"]
 mod players_list_generated;
-use crate::players_list_generated::{Player as SchemaPlayer, PlayerArgs, Color, PlayersList};
+use crate::players_list_generated::{Player as SchemaPlayer, PlayerArgs, Color, PlayersList, Vector2};
 #[path = "../player_commands_generated.rs"]
 mod player_commands_generated;
 use crate::player_commands_generated::{PlayerCommand, PlayerCommands};
@@ -22,7 +21,7 @@ const FRICTION: f32 = 0.8;
 const JUMP_CD: f32 = 0.3;
 const SCREEN_HEIGHT: usize = 360;
 const SCREEN_WIDTH: usize = 640;
-const TICK_DURATION: Duration = Duration::from_millis(333);
+const TICK_DURATION: Duration = Duration::from_millis(16);
 const SERVER_ADDR: &str = "127.0.0.1:9000";
 
 #[derive(Clone, Copy)]
@@ -149,16 +148,12 @@ fn tick(
     let players_offsets: Vec<_> = players
         .iter()
         .map(|p| {
-            let args = PlayerArgs {
-                pos_x: p.pos.x,
-                pos_y: p.pos.y,
-                vel_x: 0.0,
-                vel_y: 0.0,
-                acc_x: 0.0,
-                acc_y: 0.0,
+            SchemaPlayer::create(&mut builder,&PlayerArgs {
+                pos: Some(&Vector2::new(p.pos.x, p.pos.y)),
+                vel: None,
+                acc: None,
                 color: p.color,
-            };
-            SchemaPlayer::create(&mut builder, &args)
+            })
         })
         .collect();
 
