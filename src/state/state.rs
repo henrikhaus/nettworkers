@@ -23,6 +23,10 @@ pub struct GameState {
 }
 
 impl GameState {
+    pub fn new() -> GameState {
+        GameState { players: vec![] }
+    }
+
     pub fn mutate(&mut self) {
         println!("Mutating!")
     }
@@ -42,5 +46,11 @@ impl PlayerState {
             self.vel.y -= self.jump_force;
             self.jump_timer = 0.0;
         };
+    }
+}
+
+impl GameState {
+    fn serialize(&self) {
+        
     }
 }
