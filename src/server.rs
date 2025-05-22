@@ -114,8 +114,8 @@ impl Server {
 
                 for (player_id, player) in &game_state.players {
                     println!("Player {}", player_id);
-                    println!("{:?}", player.vel.y);
-                    println!("{:?}", player.vel.x);
+                    println!("{:?}", player.pos.y);
+                    println!("{:?}", player.pos.x);
                 }
 
                 let sleep_time = TICK_DURATION.checked_sub(start.elapsed());

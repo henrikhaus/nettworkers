@@ -23,7 +23,7 @@ pub fn render(game_state: &GameState, scene: &Scene) {
         .find(|p| *p.0 == my_id)
         .map(|p| (p.1.pos.x, p.1.pos.y))
         .unwrap_or((0.0, 0.0));
-    println!("px: {}, py: {}", px, py);
+    // println!("px: {}, py: {}", px, py);
     let half_w = SCREEN_WIDTH / scale;
     let half_h = SCREEN_HEIGHT / scale;
     let cam_pos = vec2(px.clamp(20.0, w - 20.0), py.clamp(20.0, w - 20.0));

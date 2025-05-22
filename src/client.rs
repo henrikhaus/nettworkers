@@ -100,8 +100,7 @@ async fn main() {
     let scene: Scene = serde_json::from_reader(file).expect("JSON must match Scene");
 
     let socket = Arc::new(UdpSocket::bind(CLIENT_ADDR).unwrap());
-    let game_state: Arc<Mutex<GameState>> =
-        Arc::new(Mutex::new(GameState::new("scene_1".as_ref())));
+    let game_state: Arc<Mutex<GameState>> = Arc::new(Mutex::new(GameState::new("scene_1")));
     let mut commands: Vec<PlayerCommand> = Vec::new();
 
     let tick_game_state = Arc::clone(&game_state);
@@ -146,6 +145,13 @@ async fn main() {
 
         let game_state_guard = tick_game_state.lock().unwrap();
 
+        println!("players length: {}", game_state_guard.players.len());
+        for (player_id, player) in &game_state_guard.players {
+            println!("Player {}", player_id);
+            println!("{:?}", player.pos.y);
+            println!("{:?}", player.pos.x);
+        }
+
         render(&game_state_guard, &scene);
         drop(game_state_guard);
         next_frame().await;
@@ -154,8 +160,14 @@ async fn main() {
 
 fn handle_packet(packet: &[u8], game_state: &mut GameState) {
     let (new_game_state, client_player) = GameState::deserialize(packet);
-    game_state.players.insert(client_player.id, client_player);
+
+    // for (player_id, player) in &game_state.players {
+    //     println!("Packet handler {}", player_id);
+    //     println!("{:?}", player.pos.y);
+    //     println!("{:?}", player.pos.x);
+    // }
     *game_state = new_game_state;
+    game_state.players.insert(client_player.id, client_player);
 }
 
 fn input_handler(commands: &mut Vec<PlayerCommand>) {
