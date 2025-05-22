@@ -1,10 +1,10 @@
-use std::sync::MutexGuard;
+use crate::{OwnedPlayer, Scene, SceneObject, FONT_SIZE, PLAYER_SIZE, SCREEN_HEIGHT, SCREEN_WIDTH};
 use macroquad::color::{BEIGE, BLUE, GREEN, ORANGE, PINK, PURPLE, RED, WHITE};
 use macroquad::math::{vec2, Vec2};
 use macroquad::shapes::draw_rectangle;
 use macroquad::text::draw_text;
 use macroquad::window::{clear_background, screen_height, screen_width};
-use crate::{OwnedPlayer, Scene, SceneObject, FONT_SIZE, PLAYER_SIZE, SCREEN_HEIGHT, SCREEN_WIDTH};
+use std::sync::MutexGuard;
 
 pub fn render(players: &MutexGuard<Vec<OwnedPlayer>>, scene: &Scene) {
     let w = screen_width();
@@ -24,20 +24,22 @@ pub fn render(players: &MutexGuard<Vec<OwnedPlayer>>, scene: &Scene) {
         .unwrap_or((0.0, 0.0));
     let half_w = SCREEN_WIDTH / scale;
     let half_h = SCREEN_HEIGHT / scale;
-    let cam_x = px.clamp(half_w, scene.width - half_w);
-    let cam_y = py.clamp(half_h, scene.height - half_h);
-    let world_offset = vec2(
-        offset.x + SCREEN_WIDTH * scale / 2.0 - cam_x * scale,
-        offset.y + SCREEN_HEIGHT * scale / 2.0 - cam_y * scale,
+    let cam_pos = vec2(
+        px.clamp(half_w, scene.width - half_w),
+        py.clamp(half_h, scene.height - half_h),
     );
-    
+    let world_offset = vec2(
+        offset.x + SCREEN_WIDTH * scale / 2.0 - cam_pos.x * scale,
+        offset.y + SCREEN_HEIGHT * scale / 2.0 - cam_pos.y * scale,
+    );
+
     let mut objects: Vec<SceneObject> = scene
         .decorations
         .values()
         .chain(scene.collidables.values())
         .cloned()
         .collect();
-    objects.sort_by(|a, b| b.z.cmp(&a.z));
+    objects.sort_by(|a, b| b.z.total_cmp(&a.z));
 
     // frame
     let border_color = macroquad::prelude::Color::from_rgba(
@@ -62,8 +64,8 @@ pub fn render(players: &MutexGuard<Vec<OwnedPlayer>>, scene: &Scene) {
         scene.height * scale,
         bg_color,
     );
-    for obj in objects.iter().filter(|o| o.z >= 0) {
-        draw_scene_obj(obj, scale, world_offset);
+    for obj in objects.iter().filter(|o| o.z >= 0.0) {
+        draw_scene_obj(obj, scale, world_offset, cam_pos);
     }
 
     // players
@@ -78,7 +80,8 @@ pub fn render(players: &MutexGuard<Vec<OwnedPlayer>>, scene: &Scene) {
         );
         draw_text(
             &p.name[..],
-            world_offset.x + (p.x + PLAYER_SIZE / 2.0 - FONT_SIZE * p.name.len() as f32 / 4.9) * scale,
+            world_offset.x
+                + (p.x + PLAYER_SIZE / 2.0 - FONT_SIZE * p.name.len() as f32 / 4.9) * scale,
             world_offset.y + (p.y - 4.0) * scale,
             FONT_SIZE * scale,
             WHITE,
@@ -86,19 +89,19 @@ pub fn render(players: &MutexGuard<Vec<OwnedPlayer>>, scene: &Scene) {
     }
 
     // foreground
-    for obj in objects.iter().filter(|o| o.z < 0) {
-        draw_scene_obj(obj, scale, world_offset);
+    for obj in objects.iter().filter(|o| o.z < 0.0) {
+        draw_scene_obj(obj, scale, world_offset, cam_pos);
     }
 }
 
-fn draw_scene_obj(obj: &SceneObject, scale: f32, offset: Vec2) {
+fn draw_scene_obj(obj: &SceneObject, scale: f32, offset: Vec2, cam_pos: Vec2) {
     let col =
         macroquad::prelude::Color::from_rgba(obj.color.r, obj.color.g, obj.color.b, obj.color.a);
-    draw_rectangle(
-        offset.x + obj.x * scale,
-        offset.y + obj.y * scale,
-        obj.w * scale,
-        obj.h * scale,
-        col,
-    );
+
+    let parallax = 1.0 / obj.z.max(1.0);
+
+    let screen_x = (obj.x * scale - cam_pos.x * scale * parallax) + offset.x;
+    let screen_y = (obj.y * scale - cam_pos.y * scale * parallax) + offset.y;
+
+    draw_rectangle(screen_x, screen_y, obj.w * scale, obj.h * scale, col);
 }

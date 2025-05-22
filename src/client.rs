@@ -43,7 +43,7 @@ struct SceneObject {
     w: f32,
     h: f32,
     color: RgbaColor,
-    z: i32,
+    z: f32,
 }
 
 #[derive(Debug, Deserialize)]
@@ -92,12 +92,6 @@ fn window_conf() -> Conf {
 
 #[macroquad::main(window_conf)]
 async fn main() {
-    let mut player = ClientPlayer {
-        id: Some(1),
-        pos: Vec2::ZERO,
-        color: Color::Red,
-    };
-
     let mut sequence: u32 = 0;
 
     let file = File::open("src/scenes/scene_1.json").expect("Scene file must open");
@@ -123,14 +117,6 @@ async fn main() {
             drop(players_guard);
         }
     });
-
-    let mut objects: Vec<SceneObject> = scene
-        .decorations
-        .values()
-        .chain(scene.collidables.values())
-        .cloned()
-        .collect();
-    objects.sort_by(|a, b| b.z.cmp(&a.z));
 
     loop {
         input_handler(&mut commands);
