@@ -19,7 +19,9 @@ impl GameState {
             .map(|(&_, player_state)| player_state.offset_player(builder))
             .collect();
 
+
         let players_vec = builder.create_vector(&players_offsets);
+
 
         let client_player_offset = client_player.offset_client_player(builder);
         let players_list = game_state_generated::GameState::create(

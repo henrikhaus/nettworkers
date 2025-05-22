@@ -1,5 +1,4 @@
-use flatbuffers::{root, FlatBufferBuilder};
-use macroquad::color::*;
+use flatbuffers::FlatBufferBuilder;
 use macroquad::math::f32;
 use macroquad::prelude::*;
 use serde::Deserialize;
@@ -7,7 +6,7 @@ use state::GameState;
 use std::collections::HashMap;
 use std::fs::File;
 use std::net::UdpSocket;
-use std::sync::{Arc, Mutex, MutexGuard};
+use std::sync::{Arc, Mutex};
 use std::thread;
 #[allow(dead_code, unused_imports)]
 #[path = "../game_state_generated.rs"]
@@ -145,13 +144,6 @@ async fn main() {
 
         let game_state_guard = tick_game_state.lock().unwrap();
 
-        println!("players length: {}", game_state_guard.players.len());
-        for (player_id, player) in &game_state_guard.players {
-            println!("Player {}", player_id);
-            println!("{:?}", player.pos.y);
-            println!("{:?}", player.pos.x);
-        }
-
         render(&game_state_guard, &scene);
         drop(game_state_guard);
         next_frame().await;
@@ -160,12 +152,6 @@ async fn main() {
 
 fn handle_packet(packet: &[u8], game_state: &mut GameState) {
     let (new_game_state, client_player) = GameState::deserialize(packet);
-
-    // for (player_id, player) in &game_state.players {
-    //     println!("Packet handler {}", player_id);
-    //     println!("{:?}", player.pos.y);
-    //     println!("{:?}", player.pos.x);
-    // }
     *game_state = new_game_state;
     game_state.players.insert(client_player.id, client_player);
 }

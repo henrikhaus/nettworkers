@@ -69,8 +69,8 @@ pub fn render(game_state: &GameState, scene: &Scene) {
     }
 
     // players
-    for (i, p) in game_state.players.iter().enumerate() {
-        let col = [RED, BLUE, GREEN, PURPLE, ORANGE, BEIGE, PINK][i % 7];
+    for p in &game_state.players {
+        let col = [RED, BLUE, GREEN, PURPLE, ORANGE, BEIGE, PINK][*p.0 as usize % 7];
         draw_rectangle(
             world_offset.x + p.1.pos.x * scale,
             world_offset.y + p.1.pos.y * scale,
