@@ -47,7 +47,7 @@ impl GameState {
         bytes
     }
 
-    pub fn deserialize(packet: &[u8]) -> GameState {
+    pub fn deserialize(packet: &[u8]) -> (GameState, PlayerState) {
         let game_state =
             root::<game_state_generated::GameState>(packet).expect("No players received.");
 
@@ -61,9 +61,9 @@ impl GameState {
                     PlayerState {
                         name: p.name().unwrap().to_string(),
                         pos: p.pos().unwrap().to_owned().into(),
-                        vel: p.vel().unwrap().to_owned().into(),
-                        grounded: p.grounded(),
-                        jump_timer: p.jump_timer(),
+                        vel: Vec2::zero(),
+                        grounded: false,
+                        jump_timer: 0.,
                         color: p.color(),
                         size: p.size(),
                     },
@@ -71,13 +71,29 @@ impl GameState {
             })
             .collect();
 
-        GameState {
-            players,
-            collidables: vec![],
-            width: 0.0,
-            height: 0.0,
-            spawn_point: SpawnPoint { x: 0.0, y: 0.0 },
-        }
+        let client_player: PlayerState = game_state
+            .client_player()
+            .map(|p| PlayerState {
+                name: p.name().unwrap().to_string(),
+                pos: p.pos().unwrap().to_owned().into(),
+                vel: p.vel().unwrap().to_owned().into(),
+                grounded: p.grounded(),
+                jump_timer: p.jump_timer(),
+                color: p.color(),
+                size: p.size(),
+            })
+            .expect("Should have client player");
+
+        (
+            GameState {
+                players,
+                collidables: vec![],
+                width: 0.0,
+                height: 0.0,
+                spawn_point: SpawnPoint { x: 0.0, y: 0.0 },
+            },
+            client_player,
+        )
     }
 }
 
