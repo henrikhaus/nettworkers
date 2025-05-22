@@ -74,9 +74,9 @@ impl Server {
     }
 
     fn broadcast_state(&self, game_state: &GameState) {
-        let mut builder = FlatBufferBuilder::with_capacity(2048);
         // Send data to client
         for (ip, player_id) in self.read_ip_id() {
+            let mut builder = FlatBufferBuilder::with_capacity(2048);
             let bytes = game_state.serialize(&mut builder, player_id);
             if let Err(e) = self.socket.send_to(bytes, ip) {
                 eprintln!("Failed to send data to client: {}", e);

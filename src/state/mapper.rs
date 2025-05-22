@@ -1,10 +1,7 @@
 use flatbuffers::{root, FlatBufferBuilder, WIPOffset};
 use std::collections::HashMap;
 
-use crate::{
-    game_state_generated::{self},
-    player_commands_generated::{self, PlayerCommand},
-};
+use crate::{game_state_generated, player_commands_generated};
 
 use super::{GameState, PlayerState, PlayerStateCommand, SpawnPoint, Vec2};
 
@@ -14,7 +11,10 @@ impl GameState {
         builder: &'a mut FlatBufferBuilder,
         client_player_id: u32,
     ) -> &'a [u8] {
-        let client_player = self.players.get(&client_player_id).unwrap();
+        let client_player = self
+            .players
+            .get(&client_player_id)
+            .expect("Game state should always contain the client player");
         let players_offsets: Vec<_> = self
             .players
             .iter()

@@ -101,7 +101,7 @@ impl Client {
         ))
     }
 
-    fn start_game_loop(
+    async fn start_game_loop(
         self: Arc<Self>,
         state_receiver: Receiver<(GameState, PlayerState)>,
     ) -> io::Result<()> {
@@ -112,7 +112,7 @@ impl Client {
         let file = File::open("src/scenes/scene_1.json").expect("Scene file must open");
         let scene: Scene = serde_json::from_reader(file).expect("JSON must match Scene");
 
-        thread::spawn(async move || loop {
+        loop {
             // Get new game state (if available)
             if let Ok((server_game_state, client_player_state)) = state_receiver.try_recv() {
                 game_state = server_game_state;
@@ -123,26 +123,26 @@ impl Client {
 
             // Get commands and send to network thread
             let commands = input_handler();
-            let player_state_command = PlayerStateCommand {
-                sequence,
-                dt_sec: 0.0,
-                commands,
-                client_timestamp: 0,
-            };
+            if !commands.is_empty() {
+                let player_state_command = PlayerStateCommand {
+                    sequence,
+                    dt_sec: 0.0,
+                    commands,
+                    client_timestamp: 0,
+                };
 
-            if let Err(e) = self.command_sender.send(player_state_command) {
-                eprintln!("Error sending player state command: {}", e);
-            } else {
-                sequence += 1;
-            }
+                if let Err(e) = self.command_sender.send(player_state_command) {
+                    eprintln!("Error sending player state command: {}", e);
+                } else {
+                    sequence += 1;
+                }
+            };
 
             // Rendering game
             render(&game_state, &scene);
 
             next_frame().await;
-        });
-
-        Ok(())
+        }
     }
 
     fn start_network_thread(
@@ -188,18 +188,11 @@ async fn main() -> io::Result<()> {
     let (client, command_receiver, state_receiver) = Client::new()?;
     let client_arc = Arc::new(client);
 
-    client_arc.clone().start_game_loop(state_receiver)?;
-    match client_arc
+    client_arc
         .clone()
         .start_network_thread(command_receiver)
-        .expect("Failed to start network thread")
-        .join()
-    {
-        Ok(_) => (),
-        Err(err) => eprintln!("Thread panicked for some reason"),
-    };
-
-    Ok(())
+        .expect("Failed to start network thread");
+    client_arc.clone().start_game_loop(state_receiver).await
 }
 
 fn input_handler() -> Vec<PlayerCommand> {
