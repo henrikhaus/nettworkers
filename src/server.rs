@@ -91,9 +91,8 @@ impl Server {
             let mut last_tick = Instant::now();
             loop {
                 let start = Instant::now();
-                let now = Instant::now();
-                let dt = now.duration_since(last_tick).as_secs_f32();
-                last_tick = now;
+                let dt = start.duration_since(last_tick).as_secs_f32();
+                last_tick = start;
 
                 tick_server.tick(&mut game_state, dt);
                 tick_server.broadcast_state(&game_state);
