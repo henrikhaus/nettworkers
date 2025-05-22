@@ -95,9 +95,9 @@ impl From<game_state_generated::Vector2> for Vec2 {
 }
 
 impl PlayerState {
-    pub fn offset_client_player<'a, 'fbb>(
+    pub fn offset_client_player<'fbb>(
         &self,
-        builder: &'a mut flatbuffers::FlatBufferBuilder<'fbb>,
+        builder: &mut flatbuffers::FlatBufferBuilder<'fbb>,
         player_id: u32,
     ) -> WIPOffset<game_state_generated::ClientPlayer<'fbb>> {
         let name_offset = builder.create_string(&self.name);
@@ -116,11 +116,11 @@ impl PlayerState {
         )
     }
 
-    pub fn offset_player<'a, 'b>(
+    pub fn offset_player<'fbb>(
         &self,
-        builder: &'a mut flatbuffers::FlatBufferBuilder<'b>,
+        builder: &mut flatbuffers::FlatBufferBuilder<'fbb>,
         player_id: u32,
-    ) -> WIPOffset<game_state_generated::Player<'b>> {
+    ) -> WIPOffset<game_state_generated::Player<'fbb>> {
         let name_offset = builder.create_string(&self.name);
         game_state_generated::Player::create(
             builder,

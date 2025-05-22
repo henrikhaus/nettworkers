@@ -163,6 +163,15 @@ fn handle_packet(packet: &[u8], players: &mut Vec<OwnedPlayer>) {
                 color: p.color(),
             });
         }
+        if let Some(client_player) = players_list.client_player() {
+            players.push(OwnedPlayer {
+                id: client_player.id(),
+                name: client_player.name().unwrap().to_string(),
+                x: client_player.pos().unwrap().x(),
+                y: client_player.pos().unwrap().y(),
+                color: client_player.color(),
+            });
+        }
     }
 }
 
