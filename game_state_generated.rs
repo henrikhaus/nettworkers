@@ -263,11 +263,13 @@ impl<'a> flatbuffers::Follow<'a> for Player<'a> {
 
 impl<'a> Player<'a> {
   pub const VT_ID: flatbuffers::VOffsetT = 4;
-  pub const VT_POS: flatbuffers::VOffsetT = 6;
-  pub const VT_VEL: flatbuffers::VOffsetT = 8;
-  pub const VT_COLOR: flatbuffers::VOffsetT = 10;
-  pub const VT_JUMP_TIMER: flatbuffers::VOffsetT = 12;
-  pub const VT_SIZE: flatbuffers::VOffsetT = 14;
+  pub const VT_NAME: flatbuffers::VOffsetT = 6;
+  pub const VT_POS: flatbuffers::VOffsetT = 8;
+  pub const VT_VEL: flatbuffers::VOffsetT = 10;
+  pub const VT_COLOR: flatbuffers::VOffsetT = 12;
+  pub const VT_GROUNDED: flatbuffers::VOffsetT = 14;
+  pub const VT_JUMP_TIMER: flatbuffers::VOffsetT = 16;
+  pub const VT_SIZE: flatbuffers::VOffsetT = 18;
 
   #[inline]
   pub unsafe fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
@@ -283,7 +285,9 @@ impl<'a> Player<'a> {
     builder.add_jump_timer(args.jump_timer);
     if let Some(x) = args.vel { builder.add_vel(x); }
     if let Some(x) = args.pos { builder.add_pos(x); }
+    if let Some(x) = args.name { builder.add_name(x); }
     builder.add_id(args.id);
+    builder.add_grounded(args.grounded);
     builder.add_color(args.color);
     builder.finish()
   }
@@ -295,6 +299,13 @@ impl<'a> Player<'a> {
     // Created from valid Table for this object
     // which contains a valid value in this slot
     unsafe { self._tab.get::<u32>(Player::VT_ID, Some(0)).unwrap()}
+  }
+  #[inline]
+  pub fn name(&self) -> Option<&'a str> {
+    // Safety:
+    // Created from valid Table for this object
+    // which contains a valid value in this slot
+    unsafe { self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(Player::VT_NAME, None)}
   }
   #[inline]
   pub fn pos(&self) -> Option<&'a Vector2> {
@@ -316,6 +327,13 @@ impl<'a> Player<'a> {
     // Created from valid Table for this object
     // which contains a valid value in this slot
     unsafe { self._tab.get::<Color>(Player::VT_COLOR, Some(Color::Red)).unwrap()}
+  }
+  #[inline]
+  pub fn grounded(&self) -> bool {
+    // Safety:
+    // Created from valid Table for this object
+    // which contains a valid value in this slot
+    unsafe { self._tab.get::<bool>(Player::VT_GROUNDED, Some(false)).unwrap()}
   }
   #[inline]
   pub fn jump_timer(&self) -> f32 {
@@ -341,9 +359,11 @@ impl flatbuffers::Verifiable for Player<'_> {
     use self::flatbuffers::Verifiable;
     v.visit_table(pos)?
      .visit_field::<u32>("id", Self::VT_ID, false)?
+     .visit_field::<flatbuffers::ForwardsUOffset<&str>>("name", Self::VT_NAME, false)?
      .visit_field::<Vector2>("pos", Self::VT_POS, false)?
      .visit_field::<Vector2>("vel", Self::VT_VEL, false)?
      .visit_field::<Color>("color", Self::VT_COLOR, false)?
+     .visit_field::<bool>("grounded", Self::VT_GROUNDED, false)?
      .visit_field::<f32>("jump_timer", Self::VT_JUMP_TIMER, false)?
      .visit_field::<f32>("size", Self::VT_SIZE, false)?
      .finish();
@@ -352,9 +372,11 @@ impl flatbuffers::Verifiable for Player<'_> {
 }
 pub struct PlayerArgs<'a> {
     pub id: u32,
+    pub name: Option<flatbuffers::WIPOffset<&'a str>>,
     pub pos: Option<&'a Vector2>,
     pub vel: Option<&'a Vector2>,
     pub color: Color,
+    pub grounded: bool,
     pub jump_timer: f32,
     pub size: f32,
 }
@@ -363,9 +385,11 @@ impl<'a> Default for PlayerArgs<'a> {
   fn default() -> Self {
     PlayerArgs {
       id: 0,
+      name: None,
       pos: None,
       vel: None,
       color: Color::Red,
+      grounded: false,
       jump_timer: 0.0,
       size: 0.0,
     }
@@ -382,6 +406,10 @@ impl<'a: 'b, 'b, A: flatbuffers::Allocator + 'a> PlayerBuilder<'a, 'b, A> {
     self.fbb_.push_slot::<u32>(Player::VT_ID, id, 0);
   }
   #[inline]
+  pub fn add_name(&mut self, name: flatbuffers::WIPOffset<&'b  str>) {
+    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(Player::VT_NAME, name);
+  }
+  #[inline]
   pub fn add_pos(&mut self, pos: &Vector2) {
     self.fbb_.push_slot_always::<&Vector2>(Player::VT_POS, pos);
   }
@@ -392,6 +420,10 @@ impl<'a: 'b, 'b, A: flatbuffers::Allocator + 'a> PlayerBuilder<'a, 'b, A> {
   #[inline]
   pub fn add_color(&mut self, color: Color) {
     self.fbb_.push_slot::<Color>(Player::VT_COLOR, color, Color::Red);
+  }
+  #[inline]
+  pub fn add_grounded(&mut self, grounded: bool) {
+    self.fbb_.push_slot::<bool>(Player::VT_GROUNDED, grounded, false);
   }
   #[inline]
   pub fn add_jump_timer(&mut self, jump_timer: f32) {
@@ -420,9 +452,11 @@ impl core::fmt::Debug for Player<'_> {
   fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
     let mut ds = f.debug_struct("Player");
       ds.field("id", &self.id());
+      ds.field("name", &self.name());
       ds.field("pos", &self.pos());
       ds.field("vel", &self.vel());
       ds.field("color", &self.color());
+      ds.field("grounded", &self.grounded());
       ds.field("jump_timer", &self.jump_timer());
       ds.field("size", &self.size());
       ds.finish()

@@ -8,6 +8,7 @@ use std::sync::{Arc, Mutex};
 use std::thread;
 use std::thread::sleep;
 use std::time::{Duration, Instant};
+
 mod state;
 
 #[allow(dead_code, unused_imports)]
@@ -17,6 +18,7 @@ mod game_state_generated;
 mod player_commands_generated;
 use crate::player_commands_generated::{PlayerCommand, PlayerCommands};
 
+const SCENE_NAME: &str = "scene_1";
 const TICK_DURATION: Duration = Duration::from_millis(16);
 const SERVER_ADDR: &str = "127.0.0.1:9000";
 
@@ -91,7 +93,7 @@ impl Server {
     fn start_tick_thread(self: Arc<Self>, command_receiver: Receiver<(u32, PlayerCommand)>) {
         println!("Starting tick thread!");
 
-        let mut game_state = GameState::new();
+        let mut game_state = GameState::new(SCENE_NAME);
 
         thread::spawn(move || {
             let mut last_tick = Instant::now();

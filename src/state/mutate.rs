@@ -58,7 +58,7 @@ impl PlayerState {
     }
 
     fn handle_jump(&mut self) {
-        if self.pos.y >= SCREEN_HEIGHT as f32 - self.size && self.jump_timer > JUMP_CD {
+        if self.grounded && self.jump_timer > JUMP_CD {
             self.vel.y -= JUMP_FORCE;
             self.jump_timer = 0.0;
         };
