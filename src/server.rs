@@ -126,7 +126,7 @@ impl Server {
         self: Arc<Self>,
         command_receiver: Receiver<(u32, PlayerCommand)>,
     ) -> io::Result<()> {
-        self.clone().start_tick_thread(command_receiver);
+        Arc::clone(&self).start_tick_thread(command_receiver);
 
         // Listen for commands
         let socket = self.socket.try_clone()?;
