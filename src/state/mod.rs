@@ -33,8 +33,9 @@ impl Vec2 {
     }
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 pub struct PlayerState {
+    pub name: String,
     pub pos: Vec2,
     pub vel: Vec2,
     pub grounded: bool,
@@ -57,6 +58,7 @@ struct Scene {
 impl PlayerState {
     fn new() -> PlayerState {
         PlayerState {
+            name: "player".to_string(),
             pos: Vec2::zero(),
             vel: Vec2::zero(),
             grounded: false,

@@ -45,6 +45,7 @@ const SERVER_ADDR: &str = "127.0.0.1:9000";
 const PLAYER_SIZE: f32 = 16.0;
 const SCREEN_WIDTH: f32 = 640.0;
 const SCREEN_HEIGHT: f32 = 360.0;
+const FONT_SIZE: f32 = 8.0;
 
 const SCALE: f32 = 1.0;
 const FULLSCREEN: bool = true;
@@ -58,6 +59,7 @@ struct ClientPlayer {
 struct OwnedPlayer {
     x: f32,
     y: f32,
+    name: String,
     color: Color,
 }
 
@@ -165,6 +167,7 @@ fn handle_packet(packet: &[u8], players: &mut Vec<OwnedPlayer>) {
         players.clear();
         for p in player_vec {
             players.push(OwnedPlayer {
+                name: p.name().unwrap().to_string(),
                 x: p.pos().unwrap().x(),
                 y: p.pos().unwrap().y(),
                 color: p.color(),
@@ -201,6 +204,13 @@ fn render(
             PLAYER_SIZE * scale,
             PLAYER_SIZE * scale,
             col,
+        );
+        draw_text(
+            &p.name[..],
+            offset.x + (p.x + PLAYER_SIZE / 2.0 - FONT_SIZE * p.name.len() as f32 / 4.9) * scale,
+            offset.y + (p.y - 4.0) * scale,
+            FONT_SIZE * scale,
+            WHITE,
         );
     }
     // foreground

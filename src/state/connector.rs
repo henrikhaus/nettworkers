@@ -1,6 +1,6 @@
+use flatbuffers::{root, FlatBufferBuilder, UOffsetT, WIPOffset};
 use std::collections::HashMap;
-
-use flatbuffers::{root, FlatBufferBuilder};
+use std::str::FromStr;
 
 use crate::game_state_generated::{self};
 
@@ -11,17 +11,19 @@ impl GameState {
         let players_offsets: Vec<_> = self
             .players
             .iter()
-            .map(|p| {
+            .map(|(&id, player_state)| {
+                let name_offset = builder.create_string(&player_state.name);
                 game_state_generated::Player::create(
                     builder,
                     &game_state_generated::PlayerArgs {
-                        id: *p.0,
-                        pos: Some(&game_state_generated::Vector2::new(p.1.pos.x, p.1.pos.y)),
-                        vel: Some(&game_state_generated::Vector2::new(p.1.vel.x, p.1.vel.y)),
+                        id,
+                        name: Some(name_offset),
+                        pos: Some(&game_state_generated::Vector2::new(player_state.pos.x, player_state.pos.y)),
+                        vel: Some(&game_state_generated::Vector2::new(player_state.vel.x, player_state.vel.y)),
                         grounded: false,
-                        jump_timer: p.1.jump_timer,
-                        size: p.1.size,
-                        color: p.1.color,
+                        jump_timer: player_state.jump_timer,
+                        size: player_state.size,
+                        color: player_state.color,
                     },
                 )
             })
@@ -51,6 +53,7 @@ impl GameState {
                 (
                     p.id(),
                     PlayerState {
+                        name: p.name().unwrap().to_string(),
                         pos: p.pos().unwrap().to_owned().into(),
                         vel: p.vel().unwrap().to_owned().into(),
                         grounded: p.grounded(),
