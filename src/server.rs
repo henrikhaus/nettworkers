@@ -133,7 +133,7 @@ impl Server {
         Arc::clone(&self).start_tick_thread(command_receiver);
 
         // Listen for commands
-        let socket = self.socket.try_clone()?;
+        eet socket = self.socket.try_clone()?;
         loop {
             let mut buf = [0u8; 2048];
             let (amt, src_addr) = socket.recv_from(&mut buf)?;

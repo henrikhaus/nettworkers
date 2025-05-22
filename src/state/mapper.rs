@@ -1,7 +1,10 @@
 use flatbuffers::{root, FlatBufferBuilder, WIPOffset};
 use std::collections::HashMap;
 
-use crate::game_state_generated::{self};
+use crate::{
+    game_state_generated::{self},
+    player_commands_generated::{self, PlayerCommand},
+};
 
 use super::{GameState, PlayerState, SpawnPoint, Vec2};
 
@@ -19,9 +22,7 @@ impl GameState {
             .map(|(&_, player_state)| player_state.offset_player(builder))
             .collect();
 
-
         let players_vec = builder.create_vector(&players_offsets);
-
 
         let client_player_offset = client_player.offset_client_player(builder);
         let players_list = game_state_generated::GameState::create(
@@ -134,4 +135,21 @@ impl PlayerState {
             },
         )
     }
+}
+
+pub fn create_commands_offset<'fbb>(
+    commands: &[PlayerCommand],
+    builder: &mut flatbuffers::FlatBufferBuilder<'fbb>,
+    sequence: u32,
+) -> WIPOffset<player_commands_generated::PlayerCommands<'fbb>> {
+    let commands_vec = builder.create_vector(commands);
+    player_commands_generated::PlayerCommands::create(
+        builder,
+        &player_commands_generated::PlayerCommandsArgs {
+            sequence,
+            dt_sec: 0.0,
+            commands: Some(commands_vec),
+            client_timestamp: 0.0,
+        },
+    )
 }

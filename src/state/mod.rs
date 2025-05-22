@@ -1,8 +1,9 @@
-mod connector;
+mod mapper;
 mod mutate;
 mod physics;
 
 use crate::game_state_generated::Color;
+use crate::player_commands_generated;
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::fs::File;
@@ -47,6 +48,7 @@ pub struct PlayerState {
     pub color: Color,
     pub size: f32,
 }
+
 #[derive(Debug, Deserialize, Clone)]
 pub struct SceneObject {
     pub x: f32,
@@ -68,6 +70,7 @@ struct Scene {
     height: f32,
     spawn_point: SpawnPoint,
 }
+
 impl PlayerState {
     fn new(id: u32, spawn_point: &SpawnPoint) -> PlayerState {
         PlayerState {
@@ -81,6 +84,14 @@ impl PlayerState {
             size: 16.0,
         }
     }
+}
+
+pub struct PlayerStateCommand {
+    pub sequence: u32,
+    pub dt_sec: f32,
+    // Mutliple commands because the player can for example jump and move in the same frame
+    pub commands: Vec<player_commands_generated::PlayerCommand>,
+    pub client_timestamp: u32,
 }
 
 #[derive(Clone)]
