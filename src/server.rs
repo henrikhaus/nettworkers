@@ -75,19 +75,21 @@ impl Server {
 
     fn broadcast_state(&self, game_state: &GameState) {
         let mut builder = FlatBufferBuilder::with_capacity(2048);
-        let bytes = game_state.serialize(&mut builder);
         // Send data to client
-        for ip in self.get_client_ips() {
+        for (ip, player_id) in self.read_ip_id() {
+            let bytes = game_state.serialize(&mut builder, player_id);
             if let Err(e) = self.socket.send_to(bytes, ip) {
                 eprintln!("Failed to send data to client: {}", e);
             }
         }
     }
 
-    fn get_client_ips(&self) -> Vec<SocketAddr> {
+    fn read_ip_id(&self) -> Vec<(SocketAddr, u32)> {
         let ip_to_player_guard = self.ip_to_player_id.lock().unwrap();
-        let client_ips: Vec<_> = ip_to_player_guard.keys().copied().collect();
-        client_ips
+        ip_to_player_guard
+            .iter()
+            .map(|(&ip, &id)| (ip, id))
+            .collect()
     }
 
     fn start_tick_thread(self: Arc<Self>, command_receiver: Receiver<(u32, PlayerCommand)>) {
