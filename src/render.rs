@@ -32,6 +32,7 @@ pub fn render(players: &MutexGuard<Vec<OwnedPlayer>>, scene: &Scene) {
         offset.x + SCREEN_WIDTH * scale / 2.0 - cam_pos.x * scale,
         offset.y + SCREEN_HEIGHT * scale / 2.0 - cam_pos.y * scale,
     );
+    let screen_center_scaled = vec2(SCREEN_WIDTH * scale / 2.0, SCREEN_HEIGHT * scale / 2.0);
 
     let mut objects: Vec<SceneObject> = scene
         .decorations
@@ -65,7 +66,7 @@ pub fn render(players: &MutexGuard<Vec<OwnedPlayer>>, scene: &Scene) {
         bg_color,
     );
     for obj in objects.iter().filter(|o| o.z >= 0.0) {
-        draw_scene_obj(obj, scale, world_offset, cam_pos);
+        draw_scene_obj(obj, scale, offset, screen_center_scaled, cam_pos);
     }
 
     // players
@@ -90,18 +91,29 @@ pub fn render(players: &MutexGuard<Vec<OwnedPlayer>>, scene: &Scene) {
 
     // foreground
     for obj in objects.iter().filter(|o| o.z < 0.0) {
-        draw_scene_obj(obj, scale, world_offset, cam_pos);
+        draw_scene_obj(obj, scale, offset, screen_center_scaled, cam_pos);
     }
 }
 
-fn draw_scene_obj(obj: &SceneObject, scale: f32, offset: Vec2, cam_pos: Vec2) {
+fn draw_scene_obj(
+    obj: &SceneObject,
+    scale: f32,
+    offset: Vec2,
+    screen_center_scaled: Vec2,
+    cam_pos: Vec2,
+) {
     let col =
         macroquad::prelude::Color::from_rgba(obj.color.r, obj.color.g, obj.color.b, obj.color.a);
 
-    let parallax = 1.0 / obj.z.max(1.0);
+    let parallax_strength_factor = 0.03;
 
-    let screen_x = (obj.x * scale - cam_pos.x * scale * parallax) + offset.x;
-    let screen_y = (obj.y * scale - cam_pos.y * scale * parallax) + offset.y;
+    let pms = if obj.z == 0.0 {
+        1.0
+    } else {
+        (1.0 - obj.z * parallax_strength_factor).max(0.0)
+    };
+    let screen_x = offset.x + screen_center_scaled.x + (obj.x - cam_pos.x * pms) * scale;
+    let screen_y = offset.y + screen_center_scaled.y + (obj.y - cam_pos.y * pms) * scale;
 
     draw_rectangle(screen_x, screen_y, obj.w * scale, obj.h * scale, col);
 }
