@@ -51,32 +51,34 @@ impl Server {
     fn get_or_add_player_id(&self, client_addr: &SocketAddr) -> u32 {
         let mut ip_to_player_id_guard = self.ip_to_player_id.lock().unwrap();
 
-        if let Some(id) = ip_to_player_id_guard.get(client_addr) {
+        if let Some(&id) = ip_to_player_id_guard.get(client_addr) {
             // Found player ID
-            return id.to_owned();
+            return id;
         }
 
         // Else add the player
-        let highest_id = ip_to_player_id_guard
-            .iter()
-            .map(|pair| pair.1.to_owned())
-            .max()
-            .unwrap_or(0);
+        let highest_id = ip_to_player_id_guard.values().max().copied().unwrap_or(0);
         let new_player_id = highest_id + 1;
 
         ip_to_player_id_guard.insert(*client_addr, new_player_id);
         new_player_id
     }
 
-    fn broadcast_state(&self, game_state: &GameState, ip_to_player_id: &HashMap<SocketAddr, u32>) {
+    fn broadcast_state(&self, game_state: &GameState) {
         let mut builder = FlatBufferBuilder::with_capacity(2048);
         let bytes = game_state.serialize(&mut builder);
         // Send data to client
-        for ip in ip_to_player_id.keys() {
+        for ip in self.get_client_ips() {
             if let Err(e) = self.socket.send_to(bytes, ip) {
                 eprintln!("Failed to send data to client: {}", e);
             }
         }
+    }
+
+    fn get_client_ips(&self) -> Vec<SocketAddr> {
+        let ip_to_player_guard = self.ip_to_player_id.lock().unwrap();
+        let client_ips: Vec<_> = ip_to_player_guard.keys().copied().collect();
+        client_ips
     }
 
     fn start_tick_thread(self: &Arc<Self>) {
@@ -93,12 +95,8 @@ impl Server {
                 let dt = now.duration_since(last_tick).as_secs_f32();
                 last_tick = now;
 
-                let ip_to_player_guard = tick_server.ip_to_player_id.lock().unwrap();
-
-                // Let tick only mutate state
                 tick_server.tick(&mut game_state, dt);
-                tick_server.broadcast_state(&game_state, &ip_to_player_guard);
-                drop(ip_to_player_guard);
+                tick_server.broadcast_state(&game_state);
 
                 for (player_id, player) in &game_state.players {
                     println!("Player {}", player_id);
