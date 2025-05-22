@@ -18,6 +18,7 @@ pub struct PlayerState {
     pub pos: Vec2,
     pub vel: Vec2,
     pub acc: f32,
+    pub grounded: bool,
     pub jump_force: f32,
     pub jump_timer: f32,
     pub color: Color,

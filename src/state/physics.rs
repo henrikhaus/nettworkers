@@ -3,15 +3,19 @@ use super::{GRAVITY, GROUND_FRICTION, SCREEN_HEIGHT, SCREEN_WIDTH};
 
 pub fn physics(state: &mut GameState, dt: f32) {
     for (_player_id, player) in &mut state.players {
-        player.pos.x += player.vel.x * dt;
-        player.pos.y += player.vel.y * dt;
+
         player.vel.x *= GROUND_FRICTION.powf(dt);
         player.vel.y += GRAVITY * dt;
+        player.pos.x += player.vel.x * dt;
+        player.pos.y += player.vel.y * dt;
+
         player.jump_timer += dt;
+        player.grounded = false;
 
         if player.pos.y > SCREEN_HEIGHT as f32 - player.size {
             player.pos.y = SCREEN_HEIGHT as f32 - player.size;
             player.vel.y = 0.0;
+            player.grounded = true;
         }
         if player.pos.y < 0.0 {
             player.pos.y = 0.0;
@@ -64,6 +68,7 @@ pub fn physics(state: &mut GameState, dt: f32) {
                         player.pos.y = cy2;
                     }
                     player.vel.y = 0.0;
+                    player.grounded = true;
                 }
             }
         }

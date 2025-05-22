@@ -14,6 +14,7 @@ impl PlayerState {
             pos: Vec2::zero(),
             vel: Vec2::zero(),
             acc: 20.0,
+            grounded: false,
             jump_force: 600.0,
             jump_timer: 0.0,
             color: Color::Red,
@@ -43,7 +44,8 @@ struct Scene {
 
 impl GameState {
     pub fn new(scene_name: &str) -> GameState {
-        let file = File::open(format!("src/scenes/{}.json", scene_name)).expect("Scene file must open");
+        let file =
+            File::open(format!("src/scenes/{}.json", scene_name)).expect("Scene file must open");
         let scene: Scene = serde_json::from_reader(file).expect("JSON must match Scene");
         let collidables: Vec<SceneObject> = scene.collidables.into_values().collect();
 
@@ -105,7 +107,7 @@ impl PlayerState {
     }
 
     fn handle_jump(&mut self) {
-        if self.pos.y >= SCREEN_HEIGHT as f32 - self.size && self.jump_timer > JUMP_CD {
+        if self.grounded && self.jump_timer > JUMP_CD {
             self.vel.y -= self.jump_force;
             self.jump_timer = 0.0;
         };
