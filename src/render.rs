@@ -1,12 +1,12 @@
-use crate::{OwnedPlayer, Scene, SceneObject, FONT_SIZE, PLAYER_SIZE, SCREEN_HEIGHT, SCREEN_WIDTH};
+use crate::state::GameState;
+use crate::{Scene, SceneObject, FONT_SIZE, PLAYER_SIZE, SCREEN_HEIGHT, SCREEN_WIDTH};
 use macroquad::color::{BEIGE, BLUE, GREEN, ORANGE, PINK, PURPLE, RED, WHITE};
 use macroquad::math::{vec2, Vec2};
 use macroquad::shapes::draw_rectangle;
 use macroquad::text::draw_text;
 use macroquad::window::{clear_background, screen_height, screen_width};
-use std::sync::MutexGuard;
 
-pub fn render(players: &MutexGuard<Vec<OwnedPlayer>>, scene: &Scene) {
+pub fn render(game_state: &GameState, scene: &Scene) {
     let w = screen_width();
     let h = screen_height();
     let scale_x = w / SCREEN_WIDTH;
@@ -17,10 +17,11 @@ pub fn render(players: &MutexGuard<Vec<OwnedPlayer>>, scene: &Scene) {
     let offset = vec2((w - draw_w) / 2.0, (h - draw_h) / 2.0);
 
     let my_id = 1;
-    let (px, py) = players
+    let (px, py) = game_state
+        .players
         .iter()
-        .find(|p| p.id == my_id)
-        .map(|p| (p.x, p.y))
+        .find(|p| *p.0 == my_id)
+        .map(|p| (p.1.pos.x, p.1.pos.y))
         .unwrap_or((0.0, 0.0));
     let half_w = SCREEN_WIDTH / scale;
     let half_h = SCREEN_HEIGHT / scale;
@@ -70,20 +71,20 @@ pub fn render(players: &MutexGuard<Vec<OwnedPlayer>>, scene: &Scene) {
     }
 
     // players
-    for (i, p) in players.iter().enumerate() {
+    for (i, p) in game_state.players.iter().enumerate() {
         let col = [RED, BLUE, GREEN, PURPLE, ORANGE, BEIGE, PINK][i % 7];
         draw_rectangle(
-            world_offset.x + p.x * scale,
-            world_offset.y + p.y * scale,
+            world_offset.x + p.1.pos.x * scale,
+            world_offset.y + p.1.pos.y * scale,
             PLAYER_SIZE * scale,
             PLAYER_SIZE * scale,
             col,
         );
         draw_text(
-            &p.name[..],
+            &p.1.name[..],
             world_offset.x
-                + (p.x + PLAYER_SIZE / 2.0 - FONT_SIZE * p.name.len() as f32 / 4.9) * scale,
-            world_offset.y + (p.y - 4.0) * scale,
+                + (p.1.pos.x + PLAYER_SIZE / 2.0 - FONT_SIZE * p.1.name.len() as f32 / 4.9) * scale,
+            world_offset.y + (p.1.pos.y - 4.0) * scale,
             FONT_SIZE * scale,
             WHITE,
         );

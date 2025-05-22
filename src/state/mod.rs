@@ -38,6 +38,7 @@ impl Vec2 {
 
 #[derive(Clone)]
 pub struct PlayerState {
+    pub id: u32,
     pub name: String,
     pub pos: Vec2,
     pub vel: Vec2,
@@ -68,8 +69,9 @@ struct Scene {
     spawn_point: SpawnPoint,
 }
 impl PlayerState {
-    fn new(spawn_point: &SpawnPoint) -> PlayerState {
+    fn new(id: u32, spawn_point: &SpawnPoint) -> PlayerState {
         PlayerState {
+            id,
             name: "player".to_string(),
             pos: Vec2::new(spawn_point.x, spawn_point.y),
             vel: Vec2::zero(),

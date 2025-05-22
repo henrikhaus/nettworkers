@@ -1,6 +1,5 @@
-use flatbuffers::{root, FlatBufferBuilder, UOffsetT, WIPOffset};
+use flatbuffers::{root, FlatBufferBuilder, WIPOffset};
 use std::collections::HashMap;
-use std::str::FromStr;
 
 use crate::game_state_generated::{self};
 
@@ -17,12 +16,12 @@ impl GameState {
             .players
             .iter()
             .filter(|p| *p.0 != client_player_id)
-            .map(|(&player_id, player_state)| player_state.offset_player(builder, player_id))
+            .map(|(&_, player_state)| player_state.offset_player(builder))
             .collect();
 
         let players_vec = builder.create_vector(&players_offsets);
 
-        let client_player_offset = client_player.offset_client_player(builder, client_player_id);
+        let client_player_offset = client_player.offset_client_player(builder);
         let players_list = game_state_generated::GameState::create(
             builder,
             &game_state_generated::GameStateArgs {
@@ -47,6 +46,7 @@ impl GameState {
                 (
                     p.id(),
                     PlayerState {
+                        id: p.id(),
                         name: p.name().unwrap().to_string(),
                         pos: p.pos().unwrap().to_owned().into(),
                         vel: Vec2::zero(),
@@ -62,6 +62,7 @@ impl GameState {
         let client_player: PlayerState = game_state
             .client_player()
             .map(|p| PlayerState {
+                id: p.id(),
                 name: p.name().unwrap().to_string(),
                 pos: p.pos().unwrap().to_owned().into(),
                 vel: p.vel().unwrap().to_owned().into(),
@@ -98,13 +99,12 @@ impl PlayerState {
     pub fn offset_client_player<'fbb>(
         &self,
         builder: &mut flatbuffers::FlatBufferBuilder<'fbb>,
-        player_id: u32,
     ) -> WIPOffset<game_state_generated::ClientPlayer<'fbb>> {
         let name_offset = builder.create_string(&self.name);
         game_state_generated::ClientPlayer::create(
             builder,
             &game_state_generated::ClientPlayerArgs {
-                id: player_id,
+                id: self.id,
                 name: Some(name_offset),
                 pos: Some(&game_state_generated::Vector2::new(self.pos.x, self.pos.y)),
                 vel: Some(&game_state_generated::Vector2::new(self.vel.x, self.vel.y)),
@@ -119,13 +119,12 @@ impl PlayerState {
     pub fn offset_player<'fbb>(
         &self,
         builder: &mut flatbuffers::FlatBufferBuilder<'fbb>,
-        player_id: u32,
     ) -> WIPOffset<game_state_generated::Player<'fbb>> {
         let name_offset = builder.create_string(&self.name);
         game_state_generated::Player::create(
             builder,
             &game_state_generated::PlayerArgs {
-                id: player_id,
+                id: self.id,
                 name: Some(name_offset),
                 pos: Some(&game_state_generated::Vector2::new(self.pos.x, self.pos.y)),
                 size: self.size,

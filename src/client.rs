@@ -3,6 +3,7 @@ use macroquad::color::*;
 use macroquad::math::f32;
 use macroquad::prelude::*;
 use serde::Deserialize;
+use state::GameState;
 use std::collections::HashMap;
 use std::fs::File;
 use std::net::UdpSocket;
@@ -15,6 +16,7 @@ use crate::game_state_generated::Color;
 #[path = "../player_commands_generated.rs"]
 mod player_commands_generated;
 mod render;
+mod state;
 
 use crate::player_commands_generated::{PlayerCommand, PlayerCommands, PlayerCommandsArgs};
 use crate::render::render;
@@ -98,10 +100,11 @@ async fn main() {
     let scene: Scene = serde_json::from_reader(file).expect("JSON must match Scene");
 
     let socket = Arc::new(UdpSocket::bind(CLIENT_ADDR).unwrap());
-    let players: Arc<Mutex<Vec<OwnedPlayer>>> = Arc::new(Mutex::new(Vec::new()));
+    let game_state: Arc<Mutex<GameState>> =
+        Arc::new(Mutex::new(GameState::new("scene_1".as_ref())));
     let mut commands: Vec<PlayerCommand> = Vec::new();
 
-    let tick_players: Arc<Mutex<Vec<OwnedPlayer>>> = Arc::clone(&players);
+    let tick_game_state = Arc::clone(&game_state);
     let tick_socket = Arc::clone(&socket);
 
     thread::spawn(move || {
@@ -111,10 +114,10 @@ async fn main() {
             if src_addr.to_string() != SERVER_ADDR {
                 continue;
             };
-            let mut players_guard = players.lock().unwrap();
-            handle_packet(&buf[..amt], &mut players_guard);
+            let mut game_state_guard = game_state.lock().unwrap();
+            handle_packet(&buf[..amt], &mut game_state_guard);
 
-            drop(players_guard);
+            drop(game_state_guard);
         }
     });
 
@@ -141,38 +144,18 @@ async fn main() {
         }
         commands.clear();
 
-        let players_guard = tick_players.lock().unwrap();
+        let game_state_guard = tick_game_state.lock().unwrap();
 
-        render(&players_guard, &scene);
-        drop(players_guard);
+        render(&game_state_guard, &scene);
+        drop(game_state_guard);
         next_frame().await;
     }
 }
 
-fn handle_packet(packet: &[u8], players: &mut Vec<OwnedPlayer>) {
-    let players_list =
-        root::<game_state_generated::GameState>(packet).expect("No players received.");
-    if let Some(player_vec) = players_list.players() {
-        players.clear();
-        for p in player_vec {
-            players.push(OwnedPlayer {
-                id: p.id(),
-                name: p.name().unwrap().to_string(),
-                x: p.pos().unwrap().x(),
-                y: p.pos().unwrap().y(),
-                color: p.color(),
-            });
-        }
-        if let Some(client_player) = players_list.client_player() {
-            players.push(OwnedPlayer {
-                id: client_player.id(),
-                name: client_player.name().unwrap().to_string(),
-                x: client_player.pos().unwrap().x(),
-                y: client_player.pos().unwrap().y(),
-                color: client_player.color(),
-            });
-        }
-    }
+fn handle_packet(packet: &[u8], game_state: &mut GameState) {
+    let (new_game_state, client_player) = GameState::deserialize(packet);
+    game_state.players.insert(client_player.id, client_player);
+    *game_state = new_game_state;
 }
 
 fn input_handler(commands: &mut Vec<PlayerCommand>) {
