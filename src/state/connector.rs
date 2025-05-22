@@ -7,39 +7,27 @@ use crate::game_state_generated::{self};
 use super::{GameState, PlayerState, SpawnPoint, Vec2};
 
 impl GameState {
-    pub fn serialize<'a>(&self, builder: &'a mut FlatBufferBuilder) -> &'a [u8] {
+    pub fn serialize<'a>(
+        &self,
+        builder: &'a mut FlatBufferBuilder,
+        client_player_id: u32,
+    ) -> &'a [u8] {
+        let client_player = self.players.get(&client_player_id).unwrap();
         let players_offsets: Vec<_> = self
             .players
             .iter()
-            .map(|(&id, player_state)| {
-                let name_offset = builder.create_string(&player_state.name);
-                game_state_generated::Player::create(
-                    builder,
-                    &game_state_generated::PlayerArgs {
-                        id,
-                        name: Some(name_offset),
-                        pos: Some(&game_state_generated::Vector2::new(
-                            player_state.pos.x,
-                            player_state.pos.y,
-                        )),
-                        vel: Some(&game_state_generated::Vector2::new(
-                            player_state.vel.x,
-                            player_state.vel.y,
-                        )),
-                        grounded: false,
-                        jump_timer: player_state.jump_timer,
-                        size: player_state.size,
-                        color: player_state.color,
-                    },
-                )
-            })
+            .filter(|p| *p.0 != client_player_id)
+            .map(|(&player_id, player_state)| player_state.offset_player(builder, player_id))
             .collect();
 
         let players_vec = builder.create_vector(&players_offsets);
+
+        let client_player_offset = client_player.offset_client_player(builder, client_player_id);
         let players_list = game_state_generated::GameState::create(
             builder,
             &game_state_generated::GameStateArgs {
                 players: Some(players_vec),
+                client_player: Some(client_player_offset),
             },
         );
         builder.finish(players_list, None);
@@ -47,7 +35,7 @@ impl GameState {
         bytes
     }
 
-    pub fn deserialize(packet: &[u8]) -> GameState {
+    pub fn deserialize(packet: &[u8]) -> (GameState, PlayerState) {
         let game_state =
             root::<game_state_generated::GameState>(packet).expect("No players received.");
 
@@ -61,9 +49,9 @@ impl GameState {
                     PlayerState {
                         name: p.name().unwrap().to_string(),
                         pos: p.pos().unwrap().to_owned().into(),
-                        vel: p.vel().unwrap().to_owned().into(),
-                        grounded: p.grounded(),
-                        jump_timer: p.jump_timer(),
+                        vel: Vec2::zero(),
+                        grounded: false,
+                        jump_timer: 0.,
                         color: p.color(),
                         size: p.size(),
                     },
@@ -71,13 +59,29 @@ impl GameState {
             })
             .collect();
 
-        GameState {
-            players,
-            collidables: vec![],
-            width: 0.0,
-            height: 0.0,
-            spawn_point: SpawnPoint { x: 0.0, y: 0.0 },
-        }
+        let client_player: PlayerState = game_state
+            .client_player()
+            .map(|p| PlayerState {
+                name: p.name().unwrap().to_string(),
+                pos: p.pos().unwrap().to_owned().into(),
+                vel: p.vel().unwrap().to_owned().into(),
+                grounded: p.grounded(),
+                jump_timer: p.jump_timer(),
+                color: p.color(),
+                size: p.size(),
+            })
+            .expect("Should have client player");
+
+        (
+            GameState {
+                players,
+                collidables: vec![],
+                width: 0.0,
+                height: 0.0,
+                spawn_point: SpawnPoint { x: 0.0, y: 0.0 },
+            },
+            client_player,
+        )
     }
 }
 
@@ -87,5 +91,46 @@ impl From<game_state_generated::Vector2> for Vec2 {
             x: value.x(),
             y: value.y(),
         }
+    }
+}
+
+impl PlayerState {
+    pub fn offset_client_player<'fbb>(
+        &self,
+        builder: &mut flatbuffers::FlatBufferBuilder<'fbb>,
+        player_id: u32,
+    ) -> WIPOffset<game_state_generated::ClientPlayer<'fbb>> {
+        let name_offset = builder.create_string(&self.name);
+        game_state_generated::ClientPlayer::create(
+            builder,
+            &game_state_generated::ClientPlayerArgs {
+                id: player_id,
+                name: Some(name_offset),
+                pos: Some(&game_state_generated::Vector2::new(self.pos.x, self.pos.y)),
+                vel: Some(&game_state_generated::Vector2::new(self.vel.x, self.vel.y)),
+                grounded: self.grounded,
+                jump_timer: self.jump_timer,
+                size: self.size,
+                color: self.color,
+            },
+        )
+    }
+
+    pub fn offset_player<'fbb>(
+        &self,
+        builder: &mut flatbuffers::FlatBufferBuilder<'fbb>,
+        player_id: u32,
+    ) -> WIPOffset<game_state_generated::Player<'fbb>> {
+        let name_offset = builder.create_string(&self.name);
+        game_state_generated::Player::create(
+            builder,
+            &game_state_generated::PlayerArgs {
+                id: player_id,
+                name: Some(name_offset),
+                pos: Some(&game_state_generated::Vector2::new(self.pos.x, self.pos.y)),
+                size: self.size,
+                color: self.color,
+            },
+        )
     }
 }

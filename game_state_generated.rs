@@ -246,6 +246,222 @@ impl<'a> Vector2 {
 
 }
 
+pub enum ClientPlayerOffset {}
+#[derive(Copy, Clone, PartialEq)]
+
+pub struct ClientPlayer<'a> {
+  pub _tab: flatbuffers::Table<'a>,
+}
+
+impl<'a> flatbuffers::Follow<'a> for ClientPlayer<'a> {
+  type Inner = ClientPlayer<'a>;
+  #[inline]
+  unsafe fn follow(buf: &'a [u8], loc: usize) -> Self::Inner {
+    Self { _tab: flatbuffers::Table::new(buf, loc) }
+  }
+}
+
+impl<'a> ClientPlayer<'a> {
+  pub const VT_ID: flatbuffers::VOffsetT = 4;
+  pub const VT_NAME: flatbuffers::VOffsetT = 6;
+  pub const VT_POS: flatbuffers::VOffsetT = 8;
+  pub const VT_VEL: flatbuffers::VOffsetT = 10;
+  pub const VT_COLOR: flatbuffers::VOffsetT = 12;
+  pub const VT_GROUNDED: flatbuffers::VOffsetT = 14;
+  pub const VT_JUMP_TIMER: flatbuffers::VOffsetT = 16;
+  pub const VT_SIZE: flatbuffers::VOffsetT = 18;
+
+  #[inline]
+  pub unsafe fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
+    ClientPlayer { _tab: table }
+  }
+  #[allow(unused_mut)]
+  pub fn create<'bldr: 'args, 'args: 'mut_bldr, 'mut_bldr, A: flatbuffers::Allocator + 'bldr>(
+    _fbb: &'mut_bldr mut flatbuffers::FlatBufferBuilder<'bldr, A>,
+    args: &'args ClientPlayerArgs<'args>
+  ) -> flatbuffers::WIPOffset<ClientPlayer<'bldr>> {
+    let mut builder = ClientPlayerBuilder::new(_fbb);
+    builder.add_size(args.size);
+    builder.add_jump_timer(args.jump_timer);
+    if let Some(x) = args.vel { builder.add_vel(x); }
+    if let Some(x) = args.pos { builder.add_pos(x); }
+    if let Some(x) = args.name { builder.add_name(x); }
+    builder.add_id(args.id);
+    builder.add_grounded(args.grounded);
+    builder.add_color(args.color);
+    builder.finish()
+  }
+
+
+  #[inline]
+  pub fn id(&self) -> u32 {
+    // Safety:
+    // Created from valid Table for this object
+    // which contains a valid value in this slot
+    unsafe { self._tab.get::<u32>(ClientPlayer::VT_ID, Some(0)).unwrap()}
+  }
+  #[inline]
+  pub fn name(&self) -> Option<&'a str> {
+    // Safety:
+    // Created from valid Table for this object
+    // which contains a valid value in this slot
+    unsafe { self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(ClientPlayer::VT_NAME, None)}
+  }
+  #[inline]
+  pub fn pos(&self) -> Option<&'a Vector2> {
+    // Safety:
+    // Created from valid Table for this object
+    // which contains a valid value in this slot
+    unsafe { self._tab.get::<Vector2>(ClientPlayer::VT_POS, None)}
+  }
+  #[inline]
+  pub fn vel(&self) -> Option<&'a Vector2> {
+    // Safety:
+    // Created from valid Table for this object
+    // which contains a valid value in this slot
+    unsafe { self._tab.get::<Vector2>(ClientPlayer::VT_VEL, None)}
+  }
+  #[inline]
+  pub fn color(&self) -> Color {
+    // Safety:
+    // Created from valid Table for this object
+    // which contains a valid value in this slot
+    unsafe { self._tab.get::<Color>(ClientPlayer::VT_COLOR, Some(Color::Red)).unwrap()}
+  }
+  #[inline]
+  pub fn grounded(&self) -> bool {
+    // Safety:
+    // Created from valid Table for this object
+    // which contains a valid value in this slot
+    unsafe { self._tab.get::<bool>(ClientPlayer::VT_GROUNDED, Some(false)).unwrap()}
+  }
+  #[inline]
+  pub fn jump_timer(&self) -> f32 {
+    // Safety:
+    // Created from valid Table for this object
+    // which contains a valid value in this slot
+    unsafe { self._tab.get::<f32>(ClientPlayer::VT_JUMP_TIMER, Some(0.0)).unwrap()}
+  }
+  #[inline]
+  pub fn size(&self) -> f32 {
+    // Safety:
+    // Created from valid Table for this object
+    // which contains a valid value in this slot
+    unsafe { self._tab.get::<f32>(ClientPlayer::VT_SIZE, Some(0.0)).unwrap()}
+  }
+}
+
+impl flatbuffers::Verifiable for ClientPlayer<'_> {
+  #[inline]
+  fn run_verifier(
+    v: &mut flatbuffers::Verifier, pos: usize
+  ) -> Result<(), flatbuffers::InvalidFlatbuffer> {
+    use self::flatbuffers::Verifiable;
+    v.visit_table(pos)?
+     .visit_field::<u32>("id", Self::VT_ID, false)?
+     .visit_field::<flatbuffers::ForwardsUOffset<&str>>("name", Self::VT_NAME, false)?
+     .visit_field::<Vector2>("pos", Self::VT_POS, false)?
+     .visit_field::<Vector2>("vel", Self::VT_VEL, false)?
+     .visit_field::<Color>("color", Self::VT_COLOR, false)?
+     .visit_field::<bool>("grounded", Self::VT_GROUNDED, false)?
+     .visit_field::<f32>("jump_timer", Self::VT_JUMP_TIMER, false)?
+     .visit_field::<f32>("size", Self::VT_SIZE, false)?
+     .finish();
+    Ok(())
+  }
+}
+pub struct ClientPlayerArgs<'a> {
+    pub id: u32,
+    pub name: Option<flatbuffers::WIPOffset<&'a str>>,
+    pub pos: Option<&'a Vector2>,
+    pub vel: Option<&'a Vector2>,
+    pub color: Color,
+    pub grounded: bool,
+    pub jump_timer: f32,
+    pub size: f32,
+}
+impl<'a> Default for ClientPlayerArgs<'a> {
+  #[inline]
+  fn default() -> Self {
+    ClientPlayerArgs {
+      id: 0,
+      name: None,
+      pos: None,
+      vel: None,
+      color: Color::Red,
+      grounded: false,
+      jump_timer: 0.0,
+      size: 0.0,
+    }
+  }
+}
+
+pub struct ClientPlayerBuilder<'a: 'b, 'b, A: flatbuffers::Allocator + 'a> {
+  fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a, A>,
+  start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
+}
+impl<'a: 'b, 'b, A: flatbuffers::Allocator + 'a> ClientPlayerBuilder<'a, 'b, A> {
+  #[inline]
+  pub fn add_id(&mut self, id: u32) {
+    self.fbb_.push_slot::<u32>(ClientPlayer::VT_ID, id, 0);
+  }
+  #[inline]
+  pub fn add_name(&mut self, name: flatbuffers::WIPOffset<&'b  str>) {
+    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(ClientPlayer::VT_NAME, name);
+  }
+  #[inline]
+  pub fn add_pos(&mut self, pos: &Vector2) {
+    self.fbb_.push_slot_always::<&Vector2>(ClientPlayer::VT_POS, pos);
+  }
+  #[inline]
+  pub fn add_vel(&mut self, vel: &Vector2) {
+    self.fbb_.push_slot_always::<&Vector2>(ClientPlayer::VT_VEL, vel);
+  }
+  #[inline]
+  pub fn add_color(&mut self, color: Color) {
+    self.fbb_.push_slot::<Color>(ClientPlayer::VT_COLOR, color, Color::Red);
+  }
+  #[inline]
+  pub fn add_grounded(&mut self, grounded: bool) {
+    self.fbb_.push_slot::<bool>(ClientPlayer::VT_GROUNDED, grounded, false);
+  }
+  #[inline]
+  pub fn add_jump_timer(&mut self, jump_timer: f32) {
+    self.fbb_.push_slot::<f32>(ClientPlayer::VT_JUMP_TIMER, jump_timer, 0.0);
+  }
+  #[inline]
+  pub fn add_size(&mut self, size: f32) {
+    self.fbb_.push_slot::<f32>(ClientPlayer::VT_SIZE, size, 0.0);
+  }
+  #[inline]
+  pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a, A>) -> ClientPlayerBuilder<'a, 'b, A> {
+    let start = _fbb.start_table();
+    ClientPlayerBuilder {
+      fbb_: _fbb,
+      start_: start,
+    }
+  }
+  #[inline]
+  pub fn finish(self) -> flatbuffers::WIPOffset<ClientPlayer<'a>> {
+    let o = self.fbb_.end_table(self.start_);
+    flatbuffers::WIPOffset::new(o.value())
+  }
+}
+
+impl core::fmt::Debug for ClientPlayer<'_> {
+  fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+    let mut ds = f.debug_struct("ClientPlayer");
+      ds.field("id", &self.id());
+      ds.field("name", &self.name());
+      ds.field("pos", &self.pos());
+      ds.field("vel", &self.vel());
+      ds.field("color", &self.color());
+      ds.field("grounded", &self.grounded());
+      ds.field("jump_timer", &self.jump_timer());
+      ds.field("size", &self.size());
+      ds.finish()
+  }
+}
 pub enum PlayerOffset {}
 #[derive(Copy, Clone, PartialEq)]
 
@@ -265,11 +481,8 @@ impl<'a> Player<'a> {
   pub const VT_ID: flatbuffers::VOffsetT = 4;
   pub const VT_NAME: flatbuffers::VOffsetT = 6;
   pub const VT_POS: flatbuffers::VOffsetT = 8;
-  pub const VT_VEL: flatbuffers::VOffsetT = 10;
-  pub const VT_COLOR: flatbuffers::VOffsetT = 12;
-  pub const VT_GROUNDED: flatbuffers::VOffsetT = 14;
-  pub const VT_JUMP_TIMER: flatbuffers::VOffsetT = 16;
-  pub const VT_SIZE: flatbuffers::VOffsetT = 18;
+  pub const VT_COLOR: flatbuffers::VOffsetT = 10;
+  pub const VT_SIZE: flatbuffers::VOffsetT = 12;
 
   #[inline]
   pub unsafe fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
@@ -282,12 +495,9 @@ impl<'a> Player<'a> {
   ) -> flatbuffers::WIPOffset<Player<'bldr>> {
     let mut builder = PlayerBuilder::new(_fbb);
     builder.add_size(args.size);
-    builder.add_jump_timer(args.jump_timer);
-    if let Some(x) = args.vel { builder.add_vel(x); }
     if let Some(x) = args.pos { builder.add_pos(x); }
     if let Some(x) = args.name { builder.add_name(x); }
     builder.add_id(args.id);
-    builder.add_grounded(args.grounded);
     builder.add_color(args.color);
     builder.finish()
   }
@@ -315,32 +525,11 @@ impl<'a> Player<'a> {
     unsafe { self._tab.get::<Vector2>(Player::VT_POS, None)}
   }
   #[inline]
-  pub fn vel(&self) -> Option<&'a Vector2> {
-    // Safety:
-    // Created from valid Table for this object
-    // which contains a valid value in this slot
-    unsafe { self._tab.get::<Vector2>(Player::VT_VEL, None)}
-  }
-  #[inline]
   pub fn color(&self) -> Color {
     // Safety:
     // Created from valid Table for this object
     // which contains a valid value in this slot
     unsafe { self._tab.get::<Color>(Player::VT_COLOR, Some(Color::Red)).unwrap()}
-  }
-  #[inline]
-  pub fn grounded(&self) -> bool {
-    // Safety:
-    // Created from valid Table for this object
-    // which contains a valid value in this slot
-    unsafe { self._tab.get::<bool>(Player::VT_GROUNDED, Some(false)).unwrap()}
-  }
-  #[inline]
-  pub fn jump_timer(&self) -> f32 {
-    // Safety:
-    // Created from valid Table for this object
-    // which contains a valid value in this slot
-    unsafe { self._tab.get::<f32>(Player::VT_JUMP_TIMER, Some(0.0)).unwrap()}
   }
   #[inline]
   pub fn size(&self) -> f32 {
@@ -361,10 +550,7 @@ impl flatbuffers::Verifiable for Player<'_> {
      .visit_field::<u32>("id", Self::VT_ID, false)?
      .visit_field::<flatbuffers::ForwardsUOffset<&str>>("name", Self::VT_NAME, false)?
      .visit_field::<Vector2>("pos", Self::VT_POS, false)?
-     .visit_field::<Vector2>("vel", Self::VT_VEL, false)?
      .visit_field::<Color>("color", Self::VT_COLOR, false)?
-     .visit_field::<bool>("grounded", Self::VT_GROUNDED, false)?
-     .visit_field::<f32>("jump_timer", Self::VT_JUMP_TIMER, false)?
      .visit_field::<f32>("size", Self::VT_SIZE, false)?
      .finish();
     Ok(())
@@ -374,10 +560,7 @@ pub struct PlayerArgs<'a> {
     pub id: u32,
     pub name: Option<flatbuffers::WIPOffset<&'a str>>,
     pub pos: Option<&'a Vector2>,
-    pub vel: Option<&'a Vector2>,
     pub color: Color,
-    pub grounded: bool,
-    pub jump_timer: f32,
     pub size: f32,
 }
 impl<'a> Default for PlayerArgs<'a> {
@@ -387,10 +570,7 @@ impl<'a> Default for PlayerArgs<'a> {
       id: 0,
       name: None,
       pos: None,
-      vel: None,
       color: Color::Red,
-      grounded: false,
-      jump_timer: 0.0,
       size: 0.0,
     }
   }
@@ -414,20 +594,8 @@ impl<'a: 'b, 'b, A: flatbuffers::Allocator + 'a> PlayerBuilder<'a, 'b, A> {
     self.fbb_.push_slot_always::<&Vector2>(Player::VT_POS, pos);
   }
   #[inline]
-  pub fn add_vel(&mut self, vel: &Vector2) {
-    self.fbb_.push_slot_always::<&Vector2>(Player::VT_VEL, vel);
-  }
-  #[inline]
   pub fn add_color(&mut self, color: Color) {
     self.fbb_.push_slot::<Color>(Player::VT_COLOR, color, Color::Red);
-  }
-  #[inline]
-  pub fn add_grounded(&mut self, grounded: bool) {
-    self.fbb_.push_slot::<bool>(Player::VT_GROUNDED, grounded, false);
-  }
-  #[inline]
-  pub fn add_jump_timer(&mut self, jump_timer: f32) {
-    self.fbb_.push_slot::<f32>(Player::VT_JUMP_TIMER, jump_timer, 0.0);
   }
   #[inline]
   pub fn add_size(&mut self, size: f32) {
@@ -454,10 +622,7 @@ impl core::fmt::Debug for Player<'_> {
       ds.field("id", &self.id());
       ds.field("name", &self.name());
       ds.field("pos", &self.pos());
-      ds.field("vel", &self.vel());
       ds.field("color", &self.color());
-      ds.field("grounded", &self.grounded());
-      ds.field("jump_timer", &self.jump_timer());
       ds.field("size", &self.size());
       ds.finish()
   }
@@ -478,7 +643,8 @@ impl<'a> flatbuffers::Follow<'a> for GameState<'a> {
 }
 
 impl<'a> GameState<'a> {
-  pub const VT_PLAYERS: flatbuffers::VOffsetT = 4;
+  pub const VT_CLIENT_PLAYER: flatbuffers::VOffsetT = 4;
+  pub const VT_PLAYERS: flatbuffers::VOffsetT = 6;
 
   #[inline]
   pub unsafe fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
@@ -491,10 +657,18 @@ impl<'a> GameState<'a> {
   ) -> flatbuffers::WIPOffset<GameState<'bldr>> {
     let mut builder = GameStateBuilder::new(_fbb);
     if let Some(x) = args.players { builder.add_players(x); }
+    if let Some(x) = args.client_player { builder.add_client_player(x); }
     builder.finish()
   }
 
 
+  #[inline]
+  pub fn client_player(&self) -> Option<ClientPlayer<'a>> {
+    // Safety:
+    // Created from valid Table for this object
+    // which contains a valid value in this slot
+    unsafe { self._tab.get::<flatbuffers::ForwardsUOffset<ClientPlayer>>(GameState::VT_CLIENT_PLAYER, None)}
+  }
   #[inline]
   pub fn players(&self) -> Option<flatbuffers::Vector<'a, flatbuffers::ForwardsUOffset<Player<'a>>>> {
     // Safety:
@@ -511,18 +685,21 @@ impl flatbuffers::Verifiable for GameState<'_> {
   ) -> Result<(), flatbuffers::InvalidFlatbuffer> {
     use self::flatbuffers::Verifiable;
     v.visit_table(pos)?
+     .visit_field::<flatbuffers::ForwardsUOffset<ClientPlayer>>("client_player", Self::VT_CLIENT_PLAYER, false)?
      .visit_field::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'_, flatbuffers::ForwardsUOffset<Player>>>>("players", Self::VT_PLAYERS, false)?
      .finish();
     Ok(())
   }
 }
 pub struct GameStateArgs<'a> {
+    pub client_player: Option<flatbuffers::WIPOffset<ClientPlayer<'a>>>,
     pub players: Option<flatbuffers::WIPOffset<flatbuffers::Vector<'a, flatbuffers::ForwardsUOffset<Player<'a>>>>>,
 }
 impl<'a> Default for GameStateArgs<'a> {
   #[inline]
   fn default() -> Self {
     GameStateArgs {
+      client_player: None,
       players: None,
     }
   }
@@ -533,6 +710,10 @@ pub struct GameStateBuilder<'a: 'b, 'b, A: flatbuffers::Allocator + 'a> {
   start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
 }
 impl<'a: 'b, 'b, A: flatbuffers::Allocator + 'a> GameStateBuilder<'a, 'b, A> {
+  #[inline]
+  pub fn add_client_player(&mut self, client_player: flatbuffers::WIPOffset<ClientPlayer<'b >>) {
+    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<ClientPlayer>>(GameState::VT_CLIENT_PLAYER, client_player);
+  }
   #[inline]
   pub fn add_players(&mut self, players: flatbuffers::WIPOffset<flatbuffers::Vector<'b , flatbuffers::ForwardsUOffset<Player<'b >>>>) {
     self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(GameState::VT_PLAYERS, players);
@@ -555,6 +736,7 @@ impl<'a: 'b, 'b, A: flatbuffers::Allocator + 'a> GameStateBuilder<'a, 'b, A> {
 impl core::fmt::Debug for GameState<'_> {
   fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
     let mut ds = f.debug_struct("GameState");
+      ds.field("client_player", &self.client_player());
       ds.field("players", &self.players());
       ds.finish()
   }

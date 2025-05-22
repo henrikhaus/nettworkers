@@ -14,7 +14,10 @@ mod game_state_generated;
 use crate::game_state_generated::Color;
 #[path = "../player_commands_generated.rs"]
 mod player_commands_generated;
+mod render;
+
 use crate::player_commands_generated::{PlayerCommand, PlayerCommands, PlayerCommandsArgs};
+use crate::render::render;
 
 const CLIENT_ADDR: &str = "127.0.0.1:0";
 const SERVER_ADDR: &str = "127.0.0.1:9000";
@@ -40,7 +43,7 @@ struct SceneObject {
     w: f32,
     h: f32,
     color: RgbaColor,
-    z: i32,
+    z: f32,
 }
 
 #[derive(Debug, Deserialize)]
@@ -89,12 +92,6 @@ fn window_conf() -> Conf {
 
 #[macroquad::main(window_conf)]
 async fn main() {
-    let mut player = ClientPlayer {
-        id: Some(1),
-        pos: Vec2::ZERO,
-        color: Color::Red,
-    };
-
     let mut sequence: u32 = 0;
 
     let file = File::open("src/scenes/scene_1.json").expect("Scene file must open");
@@ -121,15 +118,6 @@ async fn main() {
         }
     });
 
-    let mut scale;
-    let mut objects: Vec<SceneObject> = scene
-        .decorations
-        .values()
-        .chain(scene.collidables.values())
-        .cloned()
-        .collect();
-    objects.sort_by(|a, b| b.z.cmp(&a.z));
-
     loop {
         input_handler(&mut commands);
         if !commands.is_empty() {
@@ -155,31 +143,7 @@ async fn main() {
 
         let players_guard = tick_players.lock().unwrap();
 
-        let w = screen_width();
-        let h = screen_height();
-        let scale_x = w / SCREEN_WIDTH;
-        let scale_y = h / SCREEN_HEIGHT;
-        scale = scale_x.min(scale_y);
-        let draw_w = SCREEN_WIDTH * scale;
-        let draw_h = SCREEN_HEIGHT * scale;
-        let offset = vec2((w - draw_w) / 2.0, (h - draw_h) / 2.0);
-
-        let my_id = player.id.unwrap() as u32;
-        let (px, py) = players_guard
-            .iter()
-            .find(|p| p.id == my_id)
-            .map(|p| (p.x, p.y))
-            .unwrap_or((player.pos.x, player.pos.y));
-        let half_w = SCREEN_WIDTH / scale;
-        let half_h = SCREEN_HEIGHT / scale;
-        let cam_x = px.clamp(half_w, scene.width - half_w);
-        let cam_y = py.clamp(half_h, scene.height - half_h);
-        let world_offset = vec2(
-            offset.x + SCREEN_WIDTH * scale / 2.0 - cam_x * scale,
-            offset.y + SCREEN_HEIGHT * scale / 2.0 - cam_y * scale,
-        );
-
-        render(&players_guard, scale, world_offset, &scene);
+        render(&players_guard, &scene);
         drop(players_guard);
         next_frame().await;
     }
@@ -199,80 +163,16 @@ fn handle_packet(packet: &[u8], players: &mut Vec<OwnedPlayer>) {
                 color: p.color(),
             });
         }
+        if let Some(client_player) = players_list.client_player() {
+            players.push(OwnedPlayer {
+                id: client_player.id(),
+                name: client_player.name().unwrap().to_string(),
+                x: client_player.pos().unwrap().x(),
+                y: client_player.pos().unwrap().y(),
+                color: client_player.color(),
+            });
+        }
     }
-}
-
-fn render(players: &MutexGuard<Vec<OwnedPlayer>>, scale: f32, offset: Vec2, scene: &Scene) {
-    let mut objects: Vec<SceneObject> = scene
-        .decorations
-        .values()
-        .chain(scene.collidables.values())
-        .cloned()
-        .collect();
-    objects.sort_by(|a, b| b.z.cmp(&a.z));
-
-    // frame
-    let border_color = macroquad::prelude::Color::from_rgba(
-        scene.border_color.r,
-        scene.border_color.g,
-        scene.border_color.b,
-        scene.border_color.a,
-    );
-    clear_background(border_color);
-
-    // background
-    let bg_color = macroquad::prelude::Color::from_rgba(
-        scene.background_color.r,
-        scene.background_color.g,
-        scene.background_color.b,
-        scene.background_color.a,
-    );
-    draw_rectangle(
-        offset.x,
-        offset.y,
-        scene.width * scale,
-        scene.height * scale,
-        bg_color,
-    );
-    for obj in objects.iter().filter(|o| o.z >= 0) {
-        draw_scene_obj(obj, scale, offset);
-    }
-
-    // players
-    for (i, p) in players.iter().enumerate() {
-        let col = [RED, BLUE, GREEN, PURPLE, ORANGE, BEIGE, PINK][i % 7];
-        draw_rectangle(
-            offset.x + p.x * scale,
-            offset.y + p.y * scale,
-            PLAYER_SIZE * scale,
-            PLAYER_SIZE * scale,
-            col,
-        );
-        draw_text(
-            &p.name[..],
-            offset.x + (p.x + PLAYER_SIZE / 2.0 - FONT_SIZE * p.name.len() as f32 / 4.9) * scale,
-            offset.y + (p.y - 4.0) * scale,
-            FONT_SIZE * scale,
-            WHITE,
-        );
-    }
-
-    // foreground
-    for obj in objects.iter().filter(|o| o.z < 0) {
-        draw_scene_obj(obj, scale, offset);
-    }
-}
-
-fn draw_scene_obj(obj: &SceneObject, scale: f32, offset: Vec2) {
-    let col =
-        macroquad::prelude::Color::from_rgba(obj.color.r, obj.color.g, obj.color.b, obj.color.a);
-    draw_rectangle(
-        offset.x + obj.x * scale,
-        offset.y + obj.y * scale,
-        obj.w * scale,
-        obj.h * scale,
-        col,
-    );
 }
 
 fn input_handler(commands: &mut Vec<PlayerCommand>) {

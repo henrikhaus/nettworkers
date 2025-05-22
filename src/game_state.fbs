@@ -25,7 +25,7 @@ table Player {
 }
 
 table GameState {
-    clientPlayer: ClientPlayer;
+    client_player: ClientPlayer;
     players: [Player];
 }
 
