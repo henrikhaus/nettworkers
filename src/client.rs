@@ -6,12 +6,13 @@ use state::GameState;
 use std::collections::HashMap;
 use std::fs::File;
 use std::net::UdpSocket;
-use std::sync::{Arc, Mutex};
-use std::thread;
+use std::sync::mpsc::{self, Receiver, Sender};
+use std::sync::Arc;
+use std::{io, thread};
+
 #[allow(dead_code, unused_imports)]
 #[path = "../game_state_generated.rs"]
 mod game_state_generated;
-use crate::game_state_generated::Color;
 #[path = "../player_commands_generated.rs"]
 mod player_commands_generated;
 mod render;
@@ -71,63 +72,109 @@ fn window_conf() -> Conf {
     }
 }
 
-#[macroquad::main(window_conf)]
-async fn main() {
-    let mut sequence: u32 = 0;
+struct Client {
+    socket: UdpSocket,
+    command_sender: Sender<PlayerCommand>,
+    state_sender: Sender<GameState>,
+}
 
-    let file = File::open("src/scenes/scene_1.json").expect("Scene file must open");
-    let scene: Scene = serde_json::from_reader(file).expect("JSON must match Scene");
+impl Client {
+    fn new() -> io::Result<(Self, Receiver<PlayerCommand>, Receiver<GameState>)> {
+        let socket = UdpSocket::bind(CLIENT_ADDR)?;
+        let (command_sender, command_receiver) = mpsc::channel();
+        let (state_sender, state_receiver) = mpsc::channel();
 
-    let socket = Arc::new(UdpSocket::bind(CLIENT_ADDR).unwrap());
-    let game_state: Arc<Mutex<GameState>> = Arc::new(Mutex::new(GameState::new("scene_1")));
-    let mut commands: Vec<PlayerCommand> = Vec::new();
-
-    let tick_game_state = Arc::clone(&game_state);
-    let tick_socket = Arc::clone(&socket);
-
-    thread::spawn(move || {
-        let mut buf = [0u8; 2048];
-        loop {
-            let (amt, src_addr) = socket.recv_from(&mut buf).unwrap();
-            if src_addr.to_string() != SERVER_ADDR {
-                continue;
-            };
-            let mut game_state_guard = game_state.lock().unwrap();
-            handle_packet(&buf[..amt], &mut game_state_guard);
-
-            drop(game_state_guard);
-        }
-    });
-
-    loop {
-        input_handler(&mut commands);
-        if !commands.is_empty() {
-            let mut builder = FlatBufferBuilder::with_capacity(2048);
-            let commands_vec = builder.create_vector(&commands);
-            let player_command = PlayerCommands::create(
-                &mut builder,
-                &PlayerCommandsArgs {
-                    sequence,
-                    dt_sec: 0.0,
-                    commands: Some(commands_vec),
-                    client_timestamp: 0.0,
-                },
-            );
-            sequence += 1;
-            builder.finish(player_command, None);
-            let bytes = builder.finished_data();
-            tick_socket
-                .send_to(bytes, SERVER_ADDR)
-                .expect("Packet couldn't send.");
-        }
-        commands.clear();
-
-        let game_state_guard = tick_game_state.lock().unwrap();
-
-        render(&game_state_guard, &scene);
-        drop(game_state_guard);
-        next_frame().await;
+        Ok((
+            Client {
+                socket,
+                command_sender,
+                state_sender,
+            },
+            command_receiver,
+            state_receiver,
+        ))
     }
+
+    fn start_game_loop(self: Arc<Self>, state_receiver: Receiver<GameState>) {
+        let mut sequence: u32 = 0;
+
+        let mut game_state = GameState::new("scene_1");
+        let mut commands: Vec<PlayerCommand> = Vec::new();
+
+        let file = File::open("src/scenes/scene_1.json").expect("Scene file must open");
+        let scene: Scene = serde_json::from_reader(file).expect("JSON must match Scene");
+
+        thread::spawn(async move || loop {
+            // Handling commands
+            input_handler(&mut commands);
+            if !commands.is_empty() {
+                let mut builder = FlatBufferBuilder::with_capacity(2048);
+                let commands_vec = builder.create_vector(&commands);
+                let player_command = PlayerCommands::create(
+                    &mut builder,
+                    &PlayerCommandsArgs {
+                        sequence,
+                        dt_sec: 0.0,
+                        commands: Some(commands_vec),
+                        client_timestamp: 0.0,
+                    },
+                );
+                sequence += 1;
+                builder.finish(player_command, None);
+                let bytes = builder.finished_data();
+                self.socket
+                    .send_to(bytes, SERVER_ADDR)
+                    .expect("Packet couldn't send.");
+            }
+            commands.clear();
+
+            // Get new game state
+            let game_state = state_receiver.recv().unwrap();
+
+            // Rendering game
+            render(&game_state, &scene);
+
+            next_frame().await;
+        });
+    }
+
+    fn start_network_thread(
+        self: Arc<Client>,
+        command_receiver: Receiver<PlayerCommand>,
+    ) -> thread::JoinHandle<()> {
+        thread::spawn(move || {
+            let mut buf = [0u8; 2048];
+            loop {
+                let (amt, src_addr) = socket.recv_from(&mut buf).unwrap();
+                if src_addr.to_string() != SERVER_ADDR {
+                    continue;
+                };
+                let mut game_state_guard = game_state.lock().unwrap();
+                handle_packet(&buf[..amt], &mut game_state_guard);
+
+                drop(game_state_guard);
+            }
+        })
+    }
+
+    fn run(
+        self: Arc<Client>,
+        command_receiver: Receiver<PlayerCommand>,
+        state_receiver: Receiver<GameState>,
+    ) {
+        self.clone().start_game_loop(state_receiver);
+        self.clone()
+            .start_network_thread(command_receiver)
+            .join()
+            .unwrap();
+    }
+}
+
+#[macroquad::main(window_conf)]
+async fn main() -> io::Result<()> {
+    let (client, command_receiver, state_receiver) = Client::new()?;
+    let client_arc = Arc::new(client);
+    client_arc.run(command_receiver, state_receiver)
 }
 
 fn handle_packet(packet: &[u8], game_state: &mut GameState) {
