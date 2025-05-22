@@ -6,7 +6,7 @@ use crate::{
     player_commands_generated::{self, PlayerCommand},
 };
 
-use super::{GameState, PlayerState, SpawnPoint, Vec2};
+use super::{GameState, PlayerState, PlayerStateCommand, SpawnPoint, Vec2};
 
 impl GameState {
     pub fn serialize<'a>(
@@ -137,19 +137,20 @@ impl PlayerState {
     }
 }
 
-pub fn create_commands_offset<'fbb>(
-    commands: &[PlayerCommand],
-    builder: &mut flatbuffers::FlatBufferBuilder<'fbb>,
-    sequence: u32,
-) -> WIPOffset<player_commands_generated::PlayerCommands<'fbb>> {
-    let commands_vec = builder.create_vector(commands);
-    player_commands_generated::PlayerCommands::create(
-        builder,
-        &player_commands_generated::PlayerCommandsArgs {
-            sequence,
-            dt_sec: 0.0,
-            commands: Some(commands_vec),
-            client_timestamp: 0.0,
-        },
-    )
+impl PlayerStateCommand {
+    pub fn serialize<'fbb>(
+        &self,
+        builder: &mut flatbuffers::FlatBufferBuilder<'fbb>,
+    ) -> WIPOffset<player_commands_generated::PlayerCommands<'fbb>> {
+        let commands_vec = builder.create_vector(&self.commands);
+        player_commands_generated::PlayerCommands::create(
+            builder,
+            &player_commands_generated::PlayerCommandsArgs {
+                sequence: self.sequence,
+                dt_sec: self.dt_sec,
+                commands: Some(commands_vec),
+                client_timestamp: 0.,
+            },
+        )
+    }
 }

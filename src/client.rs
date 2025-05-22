@@ -164,20 +164,11 @@ impl Client {
                 // Send commands to server
                 while let Ok(player_state_command) = command_receiver.try_recv() {
                     let mut builder = FlatBufferBuilder::with_capacity(2048);
-                    let commands_vec = builder.create_vector(&player_state_command.commands);
-                    let player_command = PlayerCommands::create(
-                        &mut builder,
-                        &PlayerCommandsArgs {
-                            sequence: player_state_command.sequence,
-                            dt_sec: player_state_command.dt_sec,
-                            commands: Some(commands_vec),
-                            client_timestamp: 0.,
-                        },
-                    );
-                    builder.finish(player_command, None);
-                    let bytes = builder.finished_data();
+                    let serialized_commands = player_state_command.serialize(&mut builder);
+                    builder.finish(serialized_commands, None);
+
                     self.socket
-                        .send_to(bytes, SERVER_ADDR)
+                        .send_to(builder.finished_data(), SERVER_ADDR)
                         .expect("Packet couldn't send.");
                 }
 
