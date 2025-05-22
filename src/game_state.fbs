@@ -5,7 +5,7 @@ struct Vector2 {
     y: float32;
 }
 
-table Player {
+table ClientPlayer {
     id: uint32;
     name: string;
     pos: Vector2;
@@ -16,8 +16,17 @@ table Player {
     size: float32;
 }
 
+table Player {
+    id: uint32;
+    name: string;
+    pos: Vector2;
+    color: Color = Red;
+    size: float32;
+}
+
 table GameState {
-  players: [Player];
+    clientPlayer: ClientPlayer;
+    players: [Player];
 }
 
 root_type GameState;
