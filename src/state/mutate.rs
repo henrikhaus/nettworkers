@@ -6,8 +6,8 @@ use crate::player_commands_generated::PlayerCommand;
 use super::{JUMP_CD, JUMP_FORCE, PLAYER_ACCELERATION, SCREEN_HEIGHT};
 
 impl GameState {
-    pub fn mutate(&mut self, command_queue: &VecDeque<(u32, PlayerCommand)>, dt: f32) {
-        for (player_id, command) in command_queue {
+    pub fn mutate(&mut self, commands: &[(u32, PlayerCommand)], dt: f32) {
+        for (player_id, command) in commands {
             // Get player, add to game state if not exists
             let player = match self.players.get_mut(player_id) {
                 Some(player) => player,
