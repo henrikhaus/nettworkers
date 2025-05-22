@@ -48,12 +48,6 @@ struct SceneObject {
 }
 
 #[derive(Debug, Deserialize)]
-struct SpawnPoint {
-    x: f32,
-    y: f32,
-}
-
-#[derive(Debug, Deserialize)]
 struct Scene {
     decorations: HashMap<u32, SceneObject>,
     collidables: HashMap<u32, SceneObject>,
@@ -61,20 +55,6 @@ struct Scene {
     height: f32,
     background_color: RgbaColor,
     border_color: RgbaColor,
-}
-
-struct ClientPlayer {
-    id: Option<usize>,
-    pos: Vec2,
-    color: Color,
-}
-
-struct OwnedPlayer {
-    id: u32,
-    x: f32,
-    y: f32,
-    name: String,
-    color: Color,
 }
 
 fn window_conf() -> Conf {
