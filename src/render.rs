@@ -23,12 +23,10 @@ pub fn render(game_state: &GameState, scene: &Scene) {
         .find(|p| *p.0 == my_id)
         .map(|p| (p.1.pos.x, p.1.pos.y))
         .unwrap_or((0.0, 0.0));
+    println!("px: {}, py: {}", px, py);
     let half_w = SCREEN_WIDTH / scale;
     let half_h = SCREEN_HEIGHT / scale;
-    let cam_pos = vec2(
-        px.clamp(half_w, scene.width - half_w),
-        py.clamp(half_h, scene.height - half_h),
-    );
+    let cam_pos = vec2(px.clamp(20.0, w - 20.0), py.clamp(20.0, w - 20.0));
     let world_offset = vec2(
         offset.x + SCREEN_WIDTH * scale / 2.0 - cam_pos.x * scale,
         offset.y + SCREEN_HEIGHT * scale / 2.0 - cam_pos.y * scale,
