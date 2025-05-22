@@ -35,7 +35,7 @@ struct Scene {
 #[allow(dead_code, unused_imports)]
 #[path = "../game_state_generated.rs"]
 mod game_state_generated;
-use crate::game_state_generated::{Color, GameState};
+use crate::game_state_generated::Color;
 #[path = "../player_commands_generated.rs"]
 mod player_commands_generated;
 use crate::player_commands_generated::{PlayerCommand, PlayerCommands, PlayerCommandsArgs};
@@ -159,7 +159,8 @@ async fn main() {
 }
 
 fn handle_packet(packet: &[u8], players: &mut Vec<OwnedPlayer>) {
-    let players_list = root::<GameState>(packet).expect("No players received.");
+    let players_list =
+        root::<game_state_generated::GameState>(packet).expect("No players received.");
     if let Some(player_vec) = players_list.players() {
         players.clear();
         for p in player_vec {
