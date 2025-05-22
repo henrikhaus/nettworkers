@@ -28,6 +28,9 @@ pub struct Vec2 {
 }
 
 impl Vec2 {
+    pub fn new(x: f32, y: f32) -> Self {
+        Vec2 { x, y }
+    }
     pub fn zero() -> Vec2 {
         Vec2 { x: 0.0, y: 0.0 }
     }
@@ -51,15 +54,24 @@ pub struct SceneObject {
     pub h: f32,
 }
 
+#[derive(Debug, Deserialize, Clone)]
+pub struct SpawnPoint {
+    pub x: f32,
+    pub y: f32,
+}
+
 #[derive(Debug, Deserialize)]
 struct Scene {
     collidables: HashMap<u32, SceneObject>,
+    width: f32,
+    height: f32,
+    spawn_point: SpawnPoint,
 }
 impl PlayerState {
-    fn new() -> PlayerState {
+    fn new(spawn_point: &SpawnPoint) -> PlayerState {
         PlayerState {
             name: "player".to_string(),
-            pos: Vec2::zero(),
+            pos: Vec2::new(spawn_point.x, spawn_point.y),
             vel: Vec2::zero(),
             grounded: false,
             jump_timer: 0.0,
@@ -73,6 +85,9 @@ impl PlayerState {
 pub struct GameState {
     pub players: HashMap<u32, PlayerState>,
     pub collidables: Vec<SceneObject>,
+    pub width: f32,
+    pub height: f32,
+    pub spawn_point: SpawnPoint,
 }
 
 impl GameState {
@@ -81,10 +96,14 @@ impl GameState {
             File::open(format!("src/scenes/{}.json", scene_name)).expect("Scene file must open");
         let scene: Scene = serde_json::from_reader(file).expect("JSON must match Scene");
         let collidables: Vec<SceneObject> = scene.collidables.into_values().collect();
+        let spawn_point: SpawnPoint = scene.spawn_point.clone();
 
         GameState {
             players: HashMap::new(),
             collidables,
+            width: scene.width,
+            height: scene.height,
+            spawn_point,
         }
     }
 

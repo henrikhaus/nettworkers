@@ -3,7 +3,7 @@ use std::collections::VecDeque;
 use super::{physics::*, GameState, PlayerState};
 use crate::player_commands_generated::PlayerCommand;
 
-use super::{JUMP_CD, JUMP_FORCE, PLAYER_ACCELERATION, SCREEN_HEIGHT};
+use super::{JUMP_CD, JUMP_FORCE, PLAYER_ACCELERATION};
 
 impl GameState {
     pub fn mutate(&mut self, commands: &[(u32, PlayerCommand)], dt: f32) {
@@ -12,7 +12,7 @@ impl GameState {
             let player = match self.players.get_mut(player_id) {
                 Some(player) => player,
                 None => {
-                    let new_player = PlayerState::new();
+                    let new_player = PlayerState::new(&self.spawn_point);
                     self.players.insert(*player_id, new_player);
                     self.players.get_mut(player_id).unwrap()
                 }

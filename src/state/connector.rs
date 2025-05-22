@@ -4,7 +4,7 @@ use std::str::FromStr;
 
 use crate::game_state_generated::{self};
 
-use super::{GameState, PlayerState, Vec2};
+use super::{GameState, PlayerState, SpawnPoint, Vec2};
 
 impl GameState {
     pub fn serialize<'a>(&self, builder: &'a mut FlatBufferBuilder) -> &'a [u8] {
@@ -18,8 +18,14 @@ impl GameState {
                     &game_state_generated::PlayerArgs {
                         id,
                         name: Some(name_offset),
-                        pos: Some(&game_state_generated::Vector2::new(player_state.pos.x, player_state.pos.y)),
-                        vel: Some(&game_state_generated::Vector2::new(player_state.vel.x, player_state.vel.y)),
+                        pos: Some(&game_state_generated::Vector2::new(
+                            player_state.pos.x,
+                            player_state.pos.y,
+                        )),
+                        vel: Some(&game_state_generated::Vector2::new(
+                            player_state.vel.x,
+                            player_state.vel.y,
+                        )),
                         grounded: false,
                         jump_timer: player_state.jump_timer,
                         size: player_state.size,
@@ -68,6 +74,9 @@ impl GameState {
         GameState {
             players,
             collidables: vec![],
+            width: 0.0,
+            height: 0.0,
+            spawn_point: SpawnPoint { x: 0.0, y: 0.0 },
         }
     }
 }
