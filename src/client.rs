@@ -8,6 +8,23 @@ use std::fs::File;
 use std::net::UdpSocket;
 use std::sync::{Arc, Mutex, MutexGuard};
 use std::thread;
+#[allow(dead_code, unused_imports)]
+#[path = "../game_state_generated.rs"]
+mod game_state_generated;
+use crate::game_state_generated::Color;
+#[path = "../player_commands_generated.rs"]
+mod player_commands_generated;
+use crate::player_commands_generated::{PlayerCommand, PlayerCommands, PlayerCommandsArgs};
+
+const CLIENT_ADDR: &str = "127.0.0.1:0";
+const SERVER_ADDR: &str = "127.0.0.1:9000";
+const PLAYER_SIZE: f32 = 16.0;
+const SCREEN_WIDTH: f32 = 640.0;
+const SCREEN_HEIGHT: f32 = 360.0;
+const FONT_SIZE: f32 = 8.0;
+
+const SCALE: f32 = 1.0;
+const FULLSCREEN: bool = true;
 
 #[derive(Debug, Deserialize, Clone)]
 struct RgbaColor {
@@ -27,28 +44,20 @@ struct SceneObject {
 }
 
 #[derive(Debug, Deserialize)]
+struct SpawnPoint {
+    x: f32,
+    y: f32,
+}
+
+#[derive(Debug, Deserialize)]
 struct Scene {
     decorations: HashMap<u32, SceneObject>,
     collidables: HashMap<u32, SceneObject>,
+    width: f32,
+    height: f32,
+    background_color: RgbaColor,
+    border_color: RgbaColor,
 }
-
-#[allow(dead_code, unused_imports)]
-#[path = "../game_state_generated.rs"]
-mod game_state_generated;
-use crate::game_state_generated::Color;
-#[path = "../player_commands_generated.rs"]
-mod player_commands_generated;
-use crate::player_commands_generated::{PlayerCommand, PlayerCommands, PlayerCommandsArgs};
-
-const CLIENT_ADDR: &str = "127.0.0.1:0";
-const SERVER_ADDR: &str = "127.0.0.1:9000";
-const PLAYER_SIZE: f32 = 16.0;
-const SCREEN_WIDTH: f32 = 640.0;
-const SCREEN_HEIGHT: f32 = 360.0;
-const FONT_SIZE: f32 = 8.0;
-
-const SCALE: f32 = 1.0;
-const FULLSCREEN: bool = true;
 
 struct ClientPlayer {
     id: Option<usize>,
@@ -57,6 +66,7 @@ struct ClientPlayer {
 }
 
 struct OwnedPlayer {
+    id: u32,
     x: f32,
     y: f32,
     name: String,
@@ -80,7 +90,7 @@ fn window_conf() -> Conf {
 #[macroquad::main(window_conf)]
 async fn main() {
     let mut player = ClientPlayer {
-        id: Some(0),
+        id: Some(1),
         pos: Vec2::ZERO,
         color: Color::Red,
     };
@@ -154,7 +164,22 @@ async fn main() {
         let draw_h = SCREEN_HEIGHT * scale;
         let offset = vec2((w - draw_w) / 2.0, (h - draw_h) / 2.0);
 
-        render(&players_guard, scale, offset, &objects);
+        let my_id = player.id.unwrap() as u32;
+        let (px, py) = players_guard
+            .iter()
+            .find(|p| p.id == my_id)
+            .map(|p| (p.x, p.y))
+            .unwrap_or((player.pos.x, player.pos.y));
+        let half_w = SCREEN_WIDTH / scale;
+        let half_h = SCREEN_HEIGHT / scale;
+        let cam_x = px.clamp(half_w, scene.width - half_w);
+        let cam_y = py.clamp(half_h, scene.height - half_h);
+        let world_offset = vec2(
+            offset.x + SCREEN_WIDTH * scale / 2.0 - cam_x * scale,
+            offset.y + SCREEN_HEIGHT * scale / 2.0 - cam_y * scale,
+        );
+
+        render(&players_guard, scale, world_offset, &scene);
         drop(players_guard);
         next_frame().await;
     }
@@ -167,6 +192,7 @@ fn handle_packet(packet: &[u8], players: &mut Vec<OwnedPlayer>) {
         players.clear();
         for p in player_vec {
             players.push(OwnedPlayer {
+                id: p.id(),
                 name: p.name().unwrap().to_string(),
                 x: p.pos().unwrap().x(),
                 y: p.pos().unwrap().y(),
@@ -176,25 +202,42 @@ fn handle_packet(packet: &[u8], players: &mut Vec<OwnedPlayer>) {
     }
 }
 
-fn render(
-    players: &MutexGuard<Vec<OwnedPlayer>>,
-    scale: f32,
-    offset: Vec2,
-    objects: &Vec<SceneObject>,
-) {
+fn render(players: &MutexGuard<Vec<OwnedPlayer>>, scale: f32, offset: Vec2, scene: &Scene) {
+    let mut objects: Vec<SceneObject> = scene
+        .decorations
+        .values()
+        .chain(scene.collidables.values())
+        .cloned()
+        .collect();
+    objects.sort_by(|a, b| b.z.cmp(&a.z));
+
     // frame
-    clear_background(BLACK);
+    let border_color = macroquad::prelude::Color::from_rgba(
+        scene.border_color.r,
+        scene.border_color.g,
+        scene.border_color.b,
+        scene.border_color.a,
+    );
+    clear_background(border_color);
+
     // background
+    let bg_color = macroquad::prelude::Color::from_rgba(
+        scene.background_color.r,
+        scene.background_color.g,
+        scene.background_color.b,
+        scene.background_color.a,
+    );
     draw_rectangle(
         offset.x,
         offset.y,
-        SCREEN_WIDTH * scale,
-        SCREEN_HEIGHT * scale,
-        hsl_to_rgb(0.0, 0.0, 0.1),
+        scene.width * scale,
+        scene.height * scale,
+        bg_color,
     );
     for obj in objects.iter().filter(|o| o.z >= 0) {
         draw_scene_obj(obj, scale, offset);
     }
+
     // players
     for (i, p) in players.iter().enumerate() {
         let col = [RED, BLUE, GREEN, PURPLE, ORANGE, BEIGE, PINK][i % 7];
@@ -213,6 +256,7 @@ fn render(
             WHITE,
         );
     }
+
     // foreground
     for obj in objects.iter().filter(|o| o.z < 0) {
         draw_scene_obj(obj, scale, offset);

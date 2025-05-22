@@ -12,8 +12,8 @@ pub fn physics(state: &mut GameState, dt: f32) {
         player.jump_timer += dt;
         player.grounded = false;
 
-        if player.pos.y > SCREEN_HEIGHT as f32 - player.size {
-            player.pos.y = SCREEN_HEIGHT as f32 - player.size;
+        if player.pos.y > state.height - player.size {
+            player.pos.y = state.height - player.size;
             player.vel.y = 0.0;
             player.grounded = true;
         }
@@ -21,8 +21,8 @@ pub fn physics(state: &mut GameState, dt: f32) {
             player.pos.y = 0.0;
             player.vel.y = 0.0;
         }
-        if player.pos.x > SCREEN_WIDTH as f32 - player.size {
-            player.pos.x = SCREEN_WIDTH as f32 - player.size;
+        if player.pos.x > state.width - player.size {
+            player.pos.x = state.width - player.size;
             player.vel.x = 0.0;
         }
         if player.pos.x < 0.0 {
