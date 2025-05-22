@@ -108,17 +108,20 @@ impl Client {
         let mut sequence: u32 = 0;
 
         let mut game_state = GameState::new("scene_1");
+        let mut client_player = None;
 
         let file = File::open("src/scenes/scene_1.json").expect("Scene file must open");
         let scene: Scene = serde_json::from_reader(file).expect("JSON must match Scene");
 
         loop {
             // Get new game state (if available)
-            if let Ok((server_game_state, client_player_state)) = state_receiver.try_recv() {
+            if let Ok((server_game_state, server_client_player)) = state_receiver.try_recv() {
                 game_state = server_game_state;
                 game_state
                     .players
-                    .insert(client_player_state.id, client_player_state);
+                    .insert(server_client_player.id, server_client_player.clone());
+
+                client_player = Some(server_client_player);
             }
 
             // Get commands and send to network thread
@@ -139,7 +142,7 @@ impl Client {
             };
 
             // Rendering game
-            render(&game_state, &scene);
+            render(&game_state, &client_player, &scene);
 
             next_frame().await;
         }

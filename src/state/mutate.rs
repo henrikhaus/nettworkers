@@ -7,7 +7,6 @@ use super::{JUMP_CD, JUMP_FORCE, PLAYER_ACCELERATION};
 
 impl GameState {
     pub fn mutate(&mut self, commands: &[(u32, PlayerCommand)], dt: f32) {
-        println!("Commands length: {}", commands.len());
         for (player_id, command) in commands {
             println!("PlayerID: {}", player_id);
             // Get player, add to game state if not exists
