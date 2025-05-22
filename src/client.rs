@@ -154,12 +154,19 @@ impl Client {
         Ok(thread::spawn(move || {
             let mut buf = [0u8; 2048];
             loop {
-                let (amt, src_addr) = self.socket.recv_from(&mut buf).unwrap();
-                if src_addr.to_string() != SERVER_ADDR {
-                    continue;
+                let server_game_state = match self.socket.recv_from(&mut buf) {
+                    Ok((amt, src_addr)) => {
+                        if src_addr.to_string() != SERVER_ADDR {
+                            continue;
+                        };
+                        Some(GameState::deserialize(&buf[..amt]))
+                    }
+                    Err(_) => None,
                 };
 
-                let server_game_state = GameState::deserialize(&buf[..amt]);
+                if let Some(game_state) = server_game_state {
+                    self.state_sender.send(game_state).unwrap();
+                }
 
                 // Send commands to server
                 while let Ok(player_state_command) = command_receiver.try_recv() {
@@ -171,8 +178,6 @@ impl Client {
                         .send_to(builder.finished_data(), SERVER_ADDR)
                         .expect("Packet couldn't send.");
                 }
-
-                self.state_sender.send(server_game_state).unwrap();
             }
         }))
     }
@@ -184,12 +189,15 @@ async fn main() -> io::Result<()> {
     let client_arc = Arc::new(client);
 
     client_arc.clone().start_game_loop(state_receiver)?;
-    client_arc
+    match client_arc
         .clone()
         .start_network_thread(command_receiver)
         .expect("Failed to start network thread")
         .join()
-        .unwrap();
+    {
+        Ok(_) => (),
+        Err(err) => eprintln!("Thread panicked for some reason"),
+    };
 
     Ok(())
 }
