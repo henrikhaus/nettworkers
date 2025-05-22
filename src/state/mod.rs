@@ -2,9 +2,10 @@ mod connector;
 mod mutate;
 mod physics;
 
-use std::collections::HashMap;
-
 use crate::game_state_generated::Color;
+use serde::Deserialize;
+use std::collections::HashMap;
+use std::fs::File;
 
 // Settings
 pub const SCREEN_HEIGHT: usize = 360;
@@ -32,20 +33,35 @@ impl Vec2 {
     }
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 pub struct PlayerState {
+    pub name: String,
     pub pos: Vec2,
     pub vel: Vec2,
+    pub grounded: bool,
     pub jump_timer: f32,
     pub color: Color,
     pub size: f32,
 }
+#[derive(Debug, Deserialize, Clone)]
+pub struct SceneObject {
+    pub x: f32,
+    pub y: f32,
+    pub w: f32,
+    pub h: f32,
+}
 
+#[derive(Debug, Deserialize)]
+struct Scene {
+    collidables: HashMap<u32, SceneObject>,
+}
 impl PlayerState {
     fn new() -> PlayerState {
         PlayerState {
+            name: "player".to_string(),
             pos: Vec2::zero(),
             vel: Vec2::zero(),
+            grounded: false,
             jump_timer: 0.0,
             color: Color::Red,
             size: 16.0,
@@ -56,12 +72,23 @@ impl PlayerState {
 #[derive(Clone)]
 pub struct GameState {
     pub players: HashMap<u32, PlayerState>,
+    pub collidables: Vec<SceneObject>,
 }
 
 impl GameState {
-    pub fn new() -> GameState {
+    pub fn new(scene_name: &str) -> GameState {
+        let file =
+            File::open(format!("src/scenes/{}.json", scene_name)).expect("Scene file must open");
+        let scene: Scene = serde_json::from_reader(file).expect("JSON must match Scene");
+        let collidables: Vec<SceneObject> = scene.collidables.into_values().collect();
+
         GameState {
             players: HashMap::new(),
+            collidables,
         }
+    }
+
+    pub fn update_state(&mut self, new_state: GameState) {
+        self.players = new_state.players;
     }
 }

@@ -7,9 +7,11 @@ struct Vector2 {
 
 table Player {
     id: uint32;
+    name: string;
     pos: Vector2;
     vel: Vector2;
     color: Color = Red;
+    grounded: bool;
     jump_timer: float32;
     size: float32;
 }
