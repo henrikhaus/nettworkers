@@ -16,7 +16,6 @@ mod game_state_generated;
 mod player_commands_generated;
 use crate::player_commands_generated::{PlayerCommand, PlayerCommands};
 
-const MAX_PLAYERS: usize = 10;
 const TICK_DURATION: Duration = Duration::from_millis(16);
 const SERVER_ADDR: &str = "127.0.0.1:9000";
 
@@ -73,8 +72,10 @@ impl Server {
         let mut builder = FlatBufferBuilder::with_capacity(2048);
         let bytes = game_state.serialize(&mut builder);
         // Send data to client
-        for (ip, _) in ip_to_player_id {
-            let _ = self.socket.send_to(bytes, ip);
+        for ip in ip_to_player_id.keys() {
+            if let Err(e) = self.socket.send_to(bytes, ip) {
+                eprintln!("Failed to send data to client: {}", e);
+            }
         }
     }
 
