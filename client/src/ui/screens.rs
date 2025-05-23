@@ -4,7 +4,7 @@ use crate::state::{GameState, PlayerState};
 use crate::ui::{Button, DrawCmd, Label, UiContext, UiResponse, VBox, Widget};
 use macroquad::math::{Rect, vec2};
 use macroquad::time::{get_fps, get_time};
-use macroquad::window::{screen_height, screen_width};
+use macroquad::window::{screen_height, screen_width, set_fullscreen};
 
 // throttle FPS meter updates to every 0.2 seconds
 static mut LAST_FPS_UPDATE: f64 = 0.0;
@@ -18,7 +18,7 @@ pub fn main_menu(ctx: &mut UiContext, state: &mut UiState) {
     menu.begin(ctx, area);
 
     let title_area = menu.item(ctx, vec2(300.0, 50.0));
-    Label::new("Nettworkers").ui(ctx, title_area);
+    Label::new("My Rust Game").ui(ctx, title_area);
 
     let start_area = menu.item(ctx, vec2(200.0, 50.0));
     if Button::new("Start Game").ui(ctx, start_area) == UiResponse::Clicked {
@@ -38,8 +38,32 @@ pub fn main_menu(ctx: &mut UiContext, state: &mut UiState) {
     menu.end(ctx);
 }
 
+/// Settings menu: adjust game options
+pub fn settings_menu(ctx: &mut UiContext, state: &mut UiState) {
+    let area = Rect::new(0.0, 0.0, screen_width(), screen_height());
+    let mut menu = VBox::new(20.0, 10.0);
+    menu.begin(ctx, area);
+
+    let title_area = menu.item(ctx, vec2(300.0, 50.0));
+    Label::new("Settings").ui(ctx, title_area);
+
+    // Example toggle fullscreen
+    let fullscreen_area = menu.item(ctx, vec2(200.0, 50.0));
+    if Button::new("Toggle Fullscreen").ui(ctx, fullscreen_area) == UiResponse::Clicked {
+        set_fullscreen(true);
+    }
+
+    // Back to previous menu
+    let back_area = menu.item(ctx, vec2(200.0, 50.0));
+    if Button::new("Back").ui(ctx, back_area) == UiResponse::Clicked {
+        state.pop();
+    }
+
+    menu.end(ctx);
+}
+
 /// In-game HUD: shows FPS and player count, updated at a fixed interval
-pub fn hud(ctx: &mut UiContext, _state: &mut UiState, game_state: &GameState, _scene: &Scene) {
+pub fn hud(ctx: &mut UiContext, state: &mut UiState, game_state: &GameState, _scene: &Scene) {
     // throttle FPS updates
     let now = get_time();
     unsafe {
@@ -57,13 +81,26 @@ pub fn hud(ctx: &mut UiContext, _state: &mut UiState, game_state: &GameState, _s
         color: ctx.theme.text_color,
     });
 
-    let count_text = format!("Players: {}", game_state.players.len() + 1);
+    let count_text = format!("Players: {}", game_state.players.len());
     ctx.push_cmd(DrawCmd::Text {
         text: count_text,
         pos: vec2(10.0, 20.0 + ctx.font_size * 1.5),
         font_size: ctx.font_size,
         color: ctx.theme.text_color,
     });
+
+    // Pause button in HUD
+    let sw = screen_width();
+    let pause_size = vec2(60.0, 30.0);
+    let pause_area = Rect::new(
+        sw - pause_size.x - 10.0, // 10px from right
+        10.0,                     // 10px from top
+        pause_size.x,
+        pause_size.y,
+    );
+    if Button::new("Pause").ui(ctx, pause_area) == UiResponse::Clicked {
+        state.push(Screen::PauseMenu);
+    }
 }
 
 /// Pause menu: allows resuming or returning to main menu
@@ -78,6 +115,11 @@ pub fn pause_menu(ctx: &mut UiContext, state: &mut UiState) {
     let resume_area = menu.item(ctx, vec2(200.0, 50.0));
     if Button::new("Resume").ui(ctx, resume_area) == UiResponse::Clicked {
         state.pop();
+    }
+
+    let settings_area = menu.item(ctx, vec2(200.0, 50.0));
+    if Button::new("Settings").ui(ctx, settings_area) == UiResponse::Clicked {
+        state.push(Screen::Settings);
     }
 
     let main_menu_area = menu.item(ctx, vec2(200.0, 50.0));

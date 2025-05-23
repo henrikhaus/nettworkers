@@ -143,7 +143,7 @@ impl Client {
                 .as_micros() as u64;
 
             // Get commands and send to network thread
-            let commands = input_handler();
+            let commands = input_handler(&mut ui_state);
             if !commands.is_empty() {
                 let player_state_command = PlayerStateCommand {
                     sequence,
@@ -256,7 +256,23 @@ async fn main() -> io::Result<()> {
     client_arc.clone().start_game_loop(state_receiver).await
 }
 
-fn input_handler() -> Vec<generated::PlayerCommand> {
+fn input_handler(ui_state: &mut UiState) -> Vec<generated::PlayerCommand> {
+    // --- CLIENT/UI INPUT ---
+    if is_key_pressed(KeyCode::Escape) {
+        match ui_state.current_screen() {
+            Screen::InGame => {
+                ui_state.push(Screen::PauseMenu);
+            }
+            Screen::MainMenu => {
+                // Do nothing
+            }
+            _ => {
+                ui_state.pop();
+            }
+        }
+    }
+
+    // --- NETWORK INPUT ---
     let mut commands = Vec::new();
     if is_key_down(KeyCode::Right) || is_key_down(KeyCode::D) {
         commands.push(generated::PlayerCommand::Move_right);
