@@ -119,12 +119,6 @@ impl Client {
         loop {
             // Get new game state (if available)
             if let Ok((server_game_state, server_client_player)) = state_receiver.try_recv() {
-                println!(
-                    "New game state, players.len(): {}, client_player_id: {}",
-                    server_game_state.players.len(),
-                    server_client_player.id
-                );
-
                 client_player_id = server_client_player.id;
                 game_state.players = server_game_state.players;
                 game_state

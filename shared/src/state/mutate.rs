@@ -60,7 +60,6 @@ impl PlayerState {
     }
 
     fn handle_jump(&mut self) {
-        println!("Player jumped!");
         if self.grounded && self.jump_timer > JUMP_CD {
             self.vel.y -= JUMP_FORCE;
             self.jump_timer = 0.0;
