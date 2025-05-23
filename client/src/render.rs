@@ -24,11 +24,9 @@ pub fn render(game_state: &GameState, client_player: &Option<PlayerState>, scene
         None => 0,
     };
 
-    let (px, py) = game_state
-        .players
-        .iter()
-        .find(|p| *p.0 == client_player_id)
-        .map(|p| (p.1.pos.x, p.1.pos.y))
+    let (px, py) = client_player
+        .as_ref()
+        .map(|p| (p.pos.x, p.pos.y))
         .unwrap_or((0.0, 0.0));
 
     let cam_pos = {
@@ -92,30 +90,40 @@ pub fn render(game_state: &GameState, client_player: &Option<PlayerState>, scene
         draw_scene_obj(obj, scale, offset, screen_center_scaled, cam_pos);
     }
 
+    // Draw client player if exists
+    if let Some(client_player) = client_player {
+        draw_player(scale, world_offset, (&client_player_id, client_player));
+        println!("Client player drawn");
+    }
+
     // players
     for p in &game_state.players {
-        let col = [RED, BLUE, GREEN, PURPLE, ORANGE, BEIGE, PINK][*p.0 as usize % 7];
-        draw_rectangle(
-            world_offset.x + p.1.pos.x * scale,
-            world_offset.y + p.1.pos.y * scale,
-            PLAYER_SIZE * scale,
-            PLAYER_SIZE * scale,
-            col,
-        );
-        draw_text(
-            &p.1.name[..],
-            world_offset.x
-                + (p.1.pos.x + PLAYER_SIZE / 2.0 - FONT_SIZE * p.1.name.len() as f32 / 4.9) * scale,
-            world_offset.y + (p.1.pos.y - 4.0) * scale,
-            FONT_SIZE * scale,
-            WHITE,
-        );
+        draw_player(scale, world_offset, p);
     }
 
     // foreground
     for obj in objects.iter().filter(|o| o.z < 0.0) {
         draw_scene_obj(obj, scale, offset, screen_center_scaled, cam_pos);
     }
+}
+
+fn draw_player(scale: f32, world_offset: Vec2, p: (&u32, &PlayerState)) {
+    let col = [RED, BLUE, GREEN, PURPLE, ORANGE, BEIGE, PINK][*p.0 as usize % 7];
+    draw_rectangle(
+        world_offset.x + p.1.pos.x * scale,
+        world_offset.y + p.1.pos.y * scale,
+        PLAYER_SIZE * scale,
+        PLAYER_SIZE * scale,
+        col,
+    );
+    draw_text(
+        &p.1.name[..],
+        world_offset.x
+            + (p.1.pos.x + PLAYER_SIZE / 2.0 - FONT_SIZE * p.1.name.len() as f32 / 4.9) * scale,
+        world_offset.y + (p.1.pos.y - 4.0) * scale,
+        FONT_SIZE * scale,
+        WHITE,
+    );
 }
 
 fn draw_scene_obj(

@@ -2,18 +2,18 @@ use flatbuffers::FlatBufferBuilder;
 use macroquad::math::f32;
 use macroquad::prelude::*;
 use serde::Deserialize;
+use shared::generated;
+use shared::state;
 use state::{GameState, PlayerState, PlayerStateCommand};
 use std::collections::{HashMap, VecDeque};
 use std::fs::File;
 use std::net::UdpSocket;
-use std::sync::mpsc::{self, Receiver, Sender};
 use std::sync::Arc;
+use std::sync::mpsc::{self, Receiver, Sender};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use std::{io, thread};
 
-mod generated;
 mod render;
-mod state;
 
 use crate::render::render;
 
@@ -111,7 +111,7 @@ impl Client {
         let mut client_player = None;
 
         let project_root = env!("CARGO_MANIFEST_DIR");
-        let file = File::open(format!("{}/src/scenes/{}.json", project_root, SCENE_NAME))
+        let file = File::open(format!("{}/../scenes/{}.json", project_root, SCENE_NAME))
             .expect("Scene file must open");
         let scene: Scene = serde_json::from_reader(file).expect("JSON must match Scene");
         let mut last_frame = Instant::now();
@@ -120,9 +120,6 @@ impl Client {
             // Get new game state (if available)
             if let Ok((server_game_state, server_client_player)) = state_receiver.try_recv() {
                 game_state = server_game_state;
-                game_state
-                    .players
-                    .insert(server_client_player.id, server_client_player.clone());
 
                 client_player = Some(server_client_player);
             }

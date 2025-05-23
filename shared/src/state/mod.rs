@@ -105,7 +105,7 @@ pub struct GameState {
 impl GameState {
     pub fn new(scene_name: &str) -> GameState {
         let project_root = env!("CARGO_MANIFEST_DIR");
-        let file = File::open(format!("{}/src/scenes/{}.json", project_root, scene_name))
+        let file = File::open(format!("{}/../scenes/{}.json", project_root, scene_name))
             .expect("Scene file must open");
         let scene: Scene = serde_json::from_reader(file).expect("JSON must match Scene");
         let collidables: Vec<SceneObject> = scene.collidables.into_values().collect();
