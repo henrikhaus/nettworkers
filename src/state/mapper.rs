@@ -1,7 +1,6 @@
+use crate::generated;
 use flatbuffers::{root, FlatBufferBuilder, WIPOffset};
 use std::collections::HashMap;
-
-use crate::{game_state_generated, player_commands_generated};
 
 use super::{GameState, PlayerState, PlayerStateCommand, SpawnPoint, Vec2};
 
@@ -25,9 +24,9 @@ impl GameState {
         let players_vec = builder.create_vector(&players_offsets);
 
         let client_player_offset = client_player.offset_client_player(builder);
-        let players_list = game_state_generated::GameState::create(
+        let players_list = generated::GameState::create(
             builder,
-            &game_state_generated::GameStateArgs {
+            &generated::GameStateArgs {
                 players: Some(players_vec),
                 client_player: Some(client_player_offset),
             },
@@ -38,8 +37,7 @@ impl GameState {
     }
 
     pub fn deserialize(packet: &[u8]) -> (GameState, PlayerState) {
-        let game_state =
-            root::<game_state_generated::GameState>(packet).expect("No players received.");
+        let game_state = root::<generated::GameState>(packet).expect("No players received.");
 
         let players: HashMap<u32, PlayerState> = game_state
             .players()
@@ -89,8 +87,8 @@ impl GameState {
     }
 }
 
-impl From<game_state_generated::Vector2> for Vec2 {
-    fn from(value: game_state_generated::Vector2) -> Self {
+impl From<generated::Vector2> for Vec2 {
+    fn from(value: generated::Vector2) -> Self {
         Vec2 {
             x: value.x(),
             y: value.y(),
@@ -102,15 +100,15 @@ impl PlayerState {
     pub fn offset_client_player<'fbb>(
         &self,
         builder: &mut flatbuffers::FlatBufferBuilder<'fbb>,
-    ) -> WIPOffset<game_state_generated::ClientPlayer<'fbb>> {
+    ) -> WIPOffset<generated::ClientPlayer<'fbb>> {
         let name_offset = builder.create_string(&self.name);
-        game_state_generated::ClientPlayer::create(
+        generated::ClientPlayer::create(
             builder,
-            &game_state_generated::ClientPlayerArgs {
+            &generated::ClientPlayerArgs {
                 id: self.id,
                 name: Some(name_offset),
-                pos: Some(&game_state_generated::Vector2::new(self.pos.x, self.pos.y)),
-                vel: Some(&game_state_generated::Vector2::new(self.vel.x, self.vel.y)),
+                pos: Some(&generated::Vector2::new(self.pos.x, self.pos.y)),
+                vel: Some(&generated::Vector2::new(self.vel.x, self.vel.y)),
                 grounded: self.grounded,
                 jump_timer: self.jump_timer,
                 size: self.size,
@@ -122,14 +120,14 @@ impl PlayerState {
     pub fn offset_player<'fbb>(
         &self,
         builder: &mut flatbuffers::FlatBufferBuilder<'fbb>,
-    ) -> WIPOffset<game_state_generated::Player<'fbb>> {
+    ) -> WIPOffset<generated::Player<'fbb>> {
         let name_offset = builder.create_string(&self.name);
-        game_state_generated::Player::create(
+        generated::Player::create(
             builder,
-            &game_state_generated::PlayerArgs {
+            &generated::PlayerArgs {
                 id: self.id,
                 name: Some(name_offset),
-                pos: Some(&game_state_generated::Vector2::new(self.pos.x, self.pos.y)),
+                pos: Some(&generated::Vector2::new(self.pos.x, self.pos.y)),
                 size: self.size,
                 color: self.color,
             },
@@ -141,15 +139,15 @@ impl PlayerStateCommand {
     pub fn serialize<'fbb>(
         &self,
         builder: &mut flatbuffers::FlatBufferBuilder<'fbb>,
-    ) -> WIPOffset<player_commands_generated::PlayerCommands<'fbb>> {
+    ) -> WIPOffset<generated::PlayerCommands<'fbb>> {
         let commands_vec = builder.create_vector(&self.commands);
-        player_commands_generated::PlayerCommands::create(
+        generated::PlayerCommands::create(
             builder,
-            &player_commands_generated::PlayerCommandsArgs {
+            &generated::PlayerCommandsArgs {
                 sequence: self.sequence,
-                dt_sec: self.dt_sec,
                 commands: Some(commands_vec),
-                client_timestamp: 0.,
+                dt_micro: self.dt_micro,
+                client_timestamp_micro: self.client_timestamp_micro,
             },
         )
     }

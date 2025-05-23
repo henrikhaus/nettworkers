@@ -88,10 +88,10 @@ impl PlayerState {
 
 pub struct PlayerStateCommand {
     pub sequence: u32,
-    pub dt_sec: f32,
+    pub dt_micro: i64,
     // Mutliple commands because the player can for example jump and move in the same frame
     pub commands: Vec<player_commands_generated::PlayerCommand>,
-    pub client_timestamp: u32,
+    pub client_timestamp_micro: i64,
 }
 
 #[derive(Clone)]
