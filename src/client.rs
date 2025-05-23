@@ -122,7 +122,6 @@ impl Client {
                     .insert(server_client_player.id, server_client_player.clone());
 
                 client_player = Some(server_client_player);
-                println!("Received new game state");
             }
 
             // Get accurate frame timing
@@ -167,6 +166,7 @@ impl Client {
         self.socket.set_nonblocking(true)?;
 
         let mut server_state_queue = VecDeque::new();
+        let mut command_queue = VecDeque::new();
 
         Ok(thread::spawn(move || {
             let mut buf = [0u8; 2048];
@@ -197,15 +197,29 @@ impl Client {
                     }
                 }
 
-                // Send commands to server
+                // Add commands to queue
                 while let Ok(player_state_command) = command_receiver.try_recv() {
-                    let mut builder = FlatBufferBuilder::with_capacity(2048);
-                    let serialized_commands = player_state_command.serialize(&mut builder);
-                    builder.finish(serialized_commands, None);
+                    command_queue.push_back((
+                        Instant::now() + Duration::from_micros(DELAY_MS),
+                        player_state_command,
+                    ));
+                }
 
-                    self.socket
-                        .send_to(builder.finished_data(), SERVER_ADDR)
-                        .expect("Packet couldn't send.");
+                // Send commands to server when ready
+                while let Some((apply_when, _)) = command_queue.front() {
+                    if Instant::now() >= *apply_when {
+                        if let Some((_, player_state_command)) = command_queue.pop_front() {
+                            let mut builder = FlatBufferBuilder::with_capacity(2048);
+                            let serialized_commands = player_state_command.serialize(&mut builder);
+                            builder.finish(serialized_commands, None);
+                            let bytes = builder.finished_data();
+                            self.socket
+                                .send_to(bytes, SERVER_ADDR)
+                                .expect("Packet couldn't send.");
+                        }
+                    } else {
+                        break;
+                    }
                 }
             }
         }))
