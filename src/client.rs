@@ -105,7 +105,9 @@ impl Client {
         let mut game_state = GameState::new("scene_1");
         let mut client_player = None;
 
-        let file = File::open("src/scenes/scene_1.json").expect("Scene file must open");
+        let project_root = env!("CARGO_MANIFEST_DIR");
+        let file = File::open(format!("{}/src/scenes/scene_1.json", project_root))
+            .expect("Scene file must open");
         let scene: Scene = serde_json::from_reader(file).expect("JSON must match Scene");
 
         loop {
