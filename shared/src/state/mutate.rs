@@ -1,11 +1,26 @@
+use std::{
+    collections::BinaryHeap,
+    time::{Duration, Instant},
+};
+
 use super::{CommandContent, GameState, PlayerState, PlayerStateCommand, physics::*};
 use crate::generated::PlayerCommand;
 
 use super::{JUMP_CD, JUMP_FORCE, PLAYER_ACCELERATION};
 
+struct EffectToExecute {
+    execute_at: u64,
+    effect: Box<dyn FnMut()>,
+}
+
 impl GameState {
     pub fn mutate(&mut self, commands: &[CommandContent], tick_micro: u64) {
-        for (player_id, player_state_command, _relative_delay) in commands {
+        let end_tick = Instant::now();
+        let start_tick = end_tick - Duration::from_micros(tick_micro);
+
+        let mut when_to_execute = BinaryHeap::new();
+
+        for (player_id, player_state_command, relative_delay) in commands {
             let client_dt = (player_state_command.dt_micro / 1000) as f32;
             // Get player, add to game state if not exists
             let player = match self.players.get_mut(player_id) {
@@ -20,12 +35,19 @@ impl GameState {
 
             // Execute commands
             for command in &player_state_command.commands {
-                match *command {
-                    PlayerCommand::Move_right => player.handle_move_right(client_dt),
-                    PlayerCommand::Move_left => player.handle_move_left(client_dt),
-                    PlayerCommand::Jump => player.handle_jump(),
-                    _ => {}
-                }
+                let effect = EffectToExecute {
+                    execute_at: player_state_command.client_timestamp_micro + *relative_delay,
+                    effect: Box::new(move || match *command {
+                        PlayerCommand::Move_right => player.handle_move_right(client_dt),
+                        PlayerCommand::Move_left => player.handle_move_left(client_dt),
+                        PlayerCommand::Jump => player.handle_jump(),
+                        _ => {}
+                    }),
+                };
+
+                // REMEBER TO ADD EFFECT TO QUEUE, MAKE IT MIN by exectue_at
+                // ALSO EXECUTE ALL EFFECT THAT HAVE TIME LESS THAN START TICK
+                // AND EXECUTE ALL EFFECTS THAT HAVE TIME MORE THAN END TICK AT THE END OF PHYSICS
             }
         }
 
