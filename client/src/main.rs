@@ -243,8 +243,8 @@ impl Client {
 
 #[macroquad::main(window_conf)]
 async fn main() -> io::Result<()> {
-    let (client, command_receiver, state_receiver) = Client::new()?;
-    let client_arc = Arc::new(client);
+    let (client, command_receiver, state_receiver, player_delay_receiver) = Client::new()?;
+    let client_arc: Arc<Client> = Arc::new(client);
 
     client_arc
         .clone()

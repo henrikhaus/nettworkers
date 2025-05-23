@@ -1,11 +1,11 @@
-use super::{GameState, PlayerState, PlayerStateCommand, physics::*};
+use super::{CommandContent, GameState, PlayerState, PlayerStateCommand, physics::*};
 use crate::generated::PlayerCommand;
 
 use super::{JUMP_CD, JUMP_FORCE, PLAYER_ACCELERATION};
 
 impl GameState {
-    pub fn mutate(&mut self, commands: &[(u32, PlayerStateCommand)], tick_micro: u64) {
-        for (player_id, player_state_command) in commands {
+    pub fn mutate(&mut self, commands: &[CommandContent], tick_micro: u64) {
+        for (player_id, player_state_command, _relative_delay) in commands {
             let client_dt = (player_state_command.dt_micro / 1000) as f32;
             // Get player, add to game state if not exists
             let player = match self.players.get_mut(player_id) {

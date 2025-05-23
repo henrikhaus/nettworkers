@@ -110,6 +110,8 @@ pub struct GameState {
     pub spawn_point: SpawnPoint,
 }
 
+pub type CommandContent = (u32, PlayerStateCommand, u64);
+
 impl GameState {
     pub fn new(scene_name: &str) -> GameState {
         let project_root = env!("CARGO_MANIFEST_DIR");
