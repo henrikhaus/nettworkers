@@ -1,4 +1,3 @@
-#![allow(clippy::all)]
 #![allow(warnings)]
 
 mod game_state_generated;
