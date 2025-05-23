@@ -3,12 +3,12 @@ use macroquad::math::f32;
 use macroquad::prelude::*;
 use serde::Deserialize;
 use state::{GameState, PlayerState, PlayerStateCommand};
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 use std::fs::File;
 use std::net::UdpSocket;
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::sync::Arc;
-use std::time::{Instant, SystemTime, UNIX_EPOCH};
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use std::{io, thread};
 
 mod generated;
@@ -23,6 +23,7 @@ const PLAYER_SIZE: f32 = 16.0;
 const SCREEN_WIDTH: f32 = 640.0;
 const SCREEN_HEIGHT: f32 = 360.0;
 const FONT_SIZE: f32 = 8.0;
+const DELAY_MS: u64 = 300;
 
 const SCALE: f32 = 1.0;
 const FULLSCREEN: bool = false;
@@ -164,21 +165,28 @@ impl Client {
     ) -> io::Result<thread::JoinHandle<()>> {
         self.socket.set_nonblocking(true)?;
 
+        let mut server_state_queue = VecDeque::new();
+
         Ok(thread::spawn(move || {
             let mut buf = [0u8; 2048];
             loop {
-                let server_game_state = match self.socket.recv_from(&mut buf) {
-                    Ok((amt, src_addr)) => {
-                        if src_addr.to_string() != SERVER_ADDR {
-                            continue;
-                        };
-                        Some(GameState::deserialize(&buf[..amt]))
-                    }
-                    Err(_) => None,
+                if let Ok((amt, src_addr)) = self.socket.recv_from(&mut buf) {
+                    if src_addr.to_string() != SERVER_ADDR {
+                        continue;
+                    };
+
+                    let apply_when = Instant::now() + Duration::from_millis(DELAY_MS);
+                    server_state_queue.push_back((apply_when, GameState::deserialize(&buf[..amt])));
                 };
 
-                if let Some(game_state) = server_game_state {
-                    self.state_sender.send(game_state).unwrap();
+                while let Some((apply_when, _)) = server_state_queue.front() {
+                    if Instant::now() >= *apply_when {
+                        if let Some((_, game_state)) = server_state_queue.pop_front() {
+                            if let Err(e) = self.state_sender.send(game_state) {
+                                eprintln!("Error sending game state: {}", e);
+                            }
+                        }
+                    }
                 }
 
                 // Send commands to server
