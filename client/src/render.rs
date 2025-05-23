@@ -93,7 +93,6 @@ pub fn render(game_state: &GameState, client_player: &Option<PlayerState>, scene
     // Draw client player if exists
     if let Some(client_player) = client_player {
         draw_player(scale, world_offset, (&client_player_id, client_player));
-        println!("Client player drawn");
     }
 
     // players

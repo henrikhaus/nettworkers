@@ -13,9 +13,13 @@ use std::sync::mpsc::{self, Receiver, Sender};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use std::{io, thread};
 
+mod game_logic;
 mod render;
+mod ui;
 
+use crate::game_logic::{Screen, UiState};
 use crate::render::render;
+use crate::ui::{UiContext, pause_menu, screens::hud, screens::main_menu};
 
 const CLIENT_ADDR: &str = "127.0.0.1:0";
 const SERVER_ADDR: &str = "127.0.0.1:9000";
@@ -116,6 +120,9 @@ impl Client {
         let scene: Scene = serde_json::from_reader(file).expect("JSON must match Scene");
         let mut last_frame = Instant::now();
 
+        let mut ui = UiContext::new();
+        let mut ui_state = UiState::new();
+
         loop {
             // Get new game state (if available)
             if let Ok((server_game_state, server_client_player)) = state_receiver.try_recv() {
@@ -154,6 +161,16 @@ impl Client {
 
             // Rendering game
             render(&game_state, &client_player, &scene);
+
+            // begin UI frame
+            ui.begin_frame();
+            match ui_state.current_screen() {
+                Screen::MainMenu => main_menu(&mut ui, &mut ui_state),
+                Screen::InGame => hud(&mut ui, &mut ui_state, &game_state, &scene),
+                Screen::PauseMenu => pause_menu(&mut ui, &mut ui_state),
+                _ => {}
+            }
+            ui.end_frame();
 
             next_frame().await;
         }
