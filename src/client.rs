@@ -118,9 +118,6 @@ impl Client {
             // Get new game state (if available)
             if let Ok((server_game_state, server_client_player)) = state_receiver.try_recv() {
                 game_state = server_game_state;
-                game_state
-                    .players
-                    .insert(server_client_player.id, server_client_player.clone());
 
                 client_player = Some(server_client_player);
             }
