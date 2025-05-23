@@ -145,11 +145,11 @@ impl<'a> PlayerCommands<'a> {
     unsafe { self._tab.get::<u32>(PlayerCommands::VT_SEQUENCE, Some(0)).unwrap()}
   }
   #[inline]
-  pub fn dt_micro(&self) -> i64 {
+  pub fn dt_micro(&self) -> u64 {
     // Safety:
     // Created from valid Table for this object
     // which contains a valid value in this slot
-    unsafe { self._tab.get::<i64>(PlayerCommands::VT_DT_MICRO, Some(0)).unwrap()}
+    unsafe { self._tab.get::<u64>(PlayerCommands::VT_DT_MICRO, Some(0)).unwrap()}
   }
   #[inline]
   pub fn commands(&self) -> Option<flatbuffers::Vector<'a, PlayerCommand>> {
@@ -159,11 +159,11 @@ impl<'a> PlayerCommands<'a> {
     unsafe { self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, PlayerCommand>>>(PlayerCommands::VT_COMMANDS, None)}
   }
   #[inline]
-  pub fn client_timestamp_micro(&self) -> i64 {
+  pub fn client_timestamp_micro(&self) -> u64 {
     // Safety:
     // Created from valid Table for this object
     // which contains a valid value in this slot
-    unsafe { self._tab.get::<i64>(PlayerCommands::VT_CLIENT_TIMESTAMP_MICRO, Some(0)).unwrap()}
+    unsafe { self._tab.get::<u64>(PlayerCommands::VT_CLIENT_TIMESTAMP_MICRO, Some(0)).unwrap()}
   }
 }
 
@@ -175,18 +175,18 @@ impl flatbuffers::Verifiable for PlayerCommands<'_> {
     use self::flatbuffers::Verifiable;
     v.visit_table(pos)?
      .visit_field::<u32>("sequence", Self::VT_SEQUENCE, false)?
-     .visit_field::<i64>("dt_micro", Self::VT_DT_MICRO, false)?
+     .visit_field::<u64>("dt_micro", Self::VT_DT_MICRO, false)?
      .visit_field::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'_, PlayerCommand>>>("commands", Self::VT_COMMANDS, false)?
-     .visit_field::<i64>("client_timestamp_micro", Self::VT_CLIENT_TIMESTAMP_MICRO, false)?
+     .visit_field::<u64>("client_timestamp_micro", Self::VT_CLIENT_TIMESTAMP_MICRO, false)?
      .finish();
     Ok(())
   }
 }
 pub struct PlayerCommandsArgs<'a> {
     pub sequence: u32,
-    pub dt_micro: i64,
+    pub dt_micro: u64,
     pub commands: Option<flatbuffers::WIPOffset<flatbuffers::Vector<'a, PlayerCommand>>>,
-    pub client_timestamp_micro: i64,
+    pub client_timestamp_micro: u64,
 }
 impl<'a> Default for PlayerCommandsArgs<'a> {
   #[inline]
@@ -210,16 +210,16 @@ impl<'a: 'b, 'b, A: flatbuffers::Allocator + 'a> PlayerCommandsBuilder<'a, 'b, A
     self.fbb_.push_slot::<u32>(PlayerCommands::VT_SEQUENCE, sequence, 0);
   }
   #[inline]
-  pub fn add_dt_micro(&mut self, dt_micro: i64) {
-    self.fbb_.push_slot::<i64>(PlayerCommands::VT_DT_MICRO, dt_micro, 0);
+  pub fn add_dt_micro(&mut self, dt_micro: u64) {
+    self.fbb_.push_slot::<u64>(PlayerCommands::VT_DT_MICRO, dt_micro, 0);
   }
   #[inline]
   pub fn add_commands(&mut self, commands: flatbuffers::WIPOffset<flatbuffers::Vector<'b , PlayerCommand>>) {
     self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(PlayerCommands::VT_COMMANDS, commands);
   }
   #[inline]
-  pub fn add_client_timestamp_micro(&mut self, client_timestamp_micro: i64) {
-    self.fbb_.push_slot::<i64>(PlayerCommands::VT_CLIENT_TIMESTAMP_MICRO, client_timestamp_micro, 0);
+  pub fn add_client_timestamp_micro(&mut self, client_timestamp_micro: u64) {
+    self.fbb_.push_slot::<u64>(PlayerCommands::VT_CLIENT_TIMESTAMP_MICRO, client_timestamp_micro, 0);
   }
   #[inline]
   pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a, A>) -> PlayerCommandsBuilder<'a, 'b, A> {

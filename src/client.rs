@@ -8,6 +8,7 @@ use std::fs::File;
 use std::net::UdpSocket;
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::sync::Arc;
+use std::time::{Instant, SystemTime, UNIX_EPOCH};
 use std::{io, thread};
 
 mod generated;
@@ -109,6 +110,7 @@ impl Client {
         let file = File::open(format!("{}/src/scenes/scene_1.json", project_root))
             .expect("Scene file must open");
         let scene: Scene = serde_json::from_reader(file).expect("JSON must match Scene");
+        let mut last_frame = Instant::now();
 
         loop {
             // Get new game state (if available)
@@ -121,14 +123,25 @@ impl Client {
                 client_player = Some(server_client_player);
             }
 
+            // Get accurate frame timing
+            let now = Instant::now();
+            let dt_micro = now.duration_since(last_frame).as_micros() as u64;
+            last_frame = now;
+
+            // Get Unix epoch timestamp (absolute time)
+            let unix_timestamp_micro = SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap_or_default()
+                .as_micros() as u64;
+
             // Get commands and send to network thread
             let commands = input_handler();
             if !commands.is_empty() {
                 let player_state_command = PlayerStateCommand {
                     sequence,
-                    dt_micro: 0,
+                    dt_micro,
                     commands,
-                    client_timestamp_micro: 0,
+                    client_timestamp_micro: unix_timestamp_micro,
                 };
 
                 if let Err(e) = self.command_sender.send(player_state_command) {
