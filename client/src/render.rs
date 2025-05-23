@@ -1,5 +1,8 @@
 use crate::state::{GameState, PlayerState};
-use crate::{Scene, SceneObject, FONT_SIZE, PLAYER_SIZE, SCREEN_HEIGHT, SCREEN_WIDTH};
+use crate::{
+    Scene, SceneObject, FONT_SIZE, PLAYER_SIZE, SCALE, SCREEN_CLAMP_DISTANCE_X,
+    SCREEN_CLAMP_DISTANCE_Y, SCREEN_HEIGHT, SCREEN_WIDTH,
+};
 use macroquad::color::{BEIGE, BLUE, GREEN, ORANGE, PINK, PURPLE, RED, WHITE};
 use macroquad::math::{vec2, Vec2};
 use macroquad::shapes::draw_rectangle;
@@ -7,14 +10,14 @@ use macroquad::text::draw_text;
 use macroquad::window::{clear_background, screen_height, screen_width};
 
 pub fn render(game_state: &GameState, client_player: &Option<PlayerState>, scene: &Scene) {
-    let w = screen_width();
-    let h = screen_height();
-    let scale_x = w / SCREEN_WIDTH;
-    let scale_y = h / SCREEN_HEIGHT;
+    let window_w = screen_width();
+    let window_h = screen_height();
+    let scale_x = window_w / SCREEN_WIDTH;
+    let scale_y = window_h / SCREEN_HEIGHT;
     let scale = scale_x.min(scale_y);
     let draw_w = SCREEN_WIDTH * scale;
     let draw_h = SCREEN_HEIGHT * scale;
-    let offset = vec2((w - draw_w) / 2.0, (h - draw_h) / 2.0);
+    let offset = vec2((window_w - draw_w) / 2.0, (window_h - draw_h) / 2.0);
 
     let client_player_id = match client_player {
         Some(player) => player.id,
@@ -26,7 +29,26 @@ pub fn render(game_state: &GameState, client_player: &Option<PlayerState>, scene
         .map(|p| (p.pos.x, p.pos.y))
         .unwrap_or((0.0, 0.0));
 
-    let cam_pos = vec2(px.clamp(20.0, w - 20.0), py.clamp(20.0, w - 20.0));
+    let cam_pos = {
+        let min_x = SCREEN_CLAMP_DISTANCE_X;
+        let max_x = scene.width - SCREEN_CLAMP_DISTANCE_X;
+        let x = if max_x >= min_x {
+            px.clamp(min_x, max_x)
+        } else {
+            px
+        };
+
+        let min_y = SCREEN_CLAMP_DISTANCE_Y;
+        let max_y = scene.height - SCREEN_CLAMP_DISTANCE_Y;
+        let y = if max_y >= min_y {
+            py.clamp(min_y, max_y)
+        } else {
+            py
+        };
+
+        vec2(x, y)
+    };
+
     let world_offset = vec2(
         offset.x + SCREEN_WIDTH * scale / 2.0 - cam_pos.x * scale,
         offset.y + SCREEN_HEIGHT * scale / 2.0 - cam_pos.y * scale,
