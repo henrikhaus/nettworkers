@@ -21,11 +21,9 @@ pub fn render(game_state: &GameState, client_player: &Option<PlayerState>, scene
         None => 0,
     };
 
-    let (px, py) = game_state
-        .players
-        .iter()
-        .find(|p| *p.0 == client_player_id)
-        .map(|p| (p.1.pos.x, p.1.pos.y))
+    let (px, py) = client_player
+        .as_ref()
+        .map(|p| (p.pos.x, p.pos.y))
         .unwrap_or((0.0, 0.0));
 
     let cam_pos = vec2(px.clamp(20.0, w - 20.0), py.clamp(20.0, w - 20.0));
@@ -73,6 +71,7 @@ pub fn render(game_state: &GameState, client_player: &Option<PlayerState>, scene
     // Draw client player if exists
     if let Some(client_player) = client_player {
         draw_player(scale, world_offset, (&client_player_id, client_player));
+        println!("Client player drawn");
     }
 
     // players
