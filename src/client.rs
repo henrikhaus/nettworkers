@@ -191,6 +191,7 @@ impl Client {
                     }
                 }
 
+                // Send to game loop if new state is popped from the queue
                 if let Some(game_state) = last_valid_state {
                     if let Err(e) = self.state_sender.send(game_state) {
                         eprintln!("Error sending game state: {}", e);
