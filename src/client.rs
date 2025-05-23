@@ -10,15 +10,10 @@ use std::sync::mpsc::{self, Receiver, Sender};
 use std::sync::Arc;
 use std::{io, thread};
 
-#[allow(dead_code, unused_imports)]
-#[path = "../game_state_generated.rs"]
-mod game_state_generated;
-#[path = "../player_commands_generated.rs"]
-mod player_commands_generated;
+mod generated;
 mod render;
 mod state;
 
-use crate::player_commands_generated::{PlayerCommand, PlayerCommands, PlayerCommandsArgs};
 use crate::render::render;
 
 const CLIENT_ADDR: &str = "127.0.0.1:0";
@@ -198,16 +193,16 @@ async fn main() -> io::Result<()> {
     client_arc.clone().start_game_loop(state_receiver).await
 }
 
-fn input_handler() -> Vec<PlayerCommand> {
+fn input_handler() -> Vec<generated::PlayerCommand> {
     let mut commands = Vec::new();
     if is_key_down(KeyCode::Right) || is_key_down(KeyCode::D) {
-        commands.push(PlayerCommand::Move_right);
+        commands.push(generated::PlayerCommand::Move_right);
     }
     if is_key_down(KeyCode::Left) || is_key_down(KeyCode::A) {
-        commands.push(PlayerCommand::Move_left);
+        commands.push(generated::PlayerCommand::Move_left);
     }
     if is_key_down(KeyCode::Up) || is_key_down(KeyCode::W) || is_key_down(KeyCode::Space) {
-        commands.push(PlayerCommand::Jump);
+        commands.push(generated::PlayerCommand::Jump);
     }
 
     commands
