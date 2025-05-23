@@ -37,7 +37,7 @@ impl GameState {
     }
 
     pub fn deserialize(packet: &[u8]) -> (GameState, PlayerState) {
-        let game_state = root::<generated::GameState>(packet).expect("No players received.");
+        let game_state = root::<generated::GameState>(packet).expect("No state received.");
 
         let players: HashMap<u32, PlayerState> = game_state
             .players()
@@ -150,5 +150,23 @@ impl PlayerStateCommand {
                 client_timestamp_micro: self.client_timestamp_micro,
             },
         )
+    }
+
+    pub fn deserialize(packet: &[u8]) -> Self {
+        let player_commands =
+            root::<generated::PlayerCommands>(packet).expect("No commands received");
+        let commands = player_commands
+            .commands()
+            .expect("Should have commands array");
+        let sequence = player_commands.sequence();
+        let dt_micro = player_commands.dt_micro();
+        let client_timestamp_micro = player_commands.client_timestamp_micro();
+
+        Self {
+            sequence,
+            commands,
+            dt_micro,
+            client_timestamp_micro,
+        }
     }
 }
