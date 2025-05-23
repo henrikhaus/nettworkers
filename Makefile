@@ -2,4 +2,4 @@ generated_path := src/generated
 
 generate_fbs:
 	# Requires flatc complier
-	flatc --rust
+	flatc -r -o src/generated src/game_state.fbs src/player_commands.fbs
