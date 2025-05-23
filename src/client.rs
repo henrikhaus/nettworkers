@@ -24,6 +24,7 @@ const SCREEN_WIDTH: f32 = 640.0;
 const SCREEN_HEIGHT: f32 = 360.0;
 const FONT_SIZE: f32 = 8.0;
 const DELAY_MS: u64 = 300;
+const SCENE_NAME: &str = "scene_1";
 
 const SCALE: f32 = 1.0;
 const FULLSCREEN: bool = false;
@@ -104,11 +105,11 @@ impl Client {
     ) -> io::Result<()> {
         let mut sequence: u32 = 0;
 
-        let mut game_state = GameState::new("scene_1");
+        let mut game_state = GameState::new(SCENE_NAME);
         let mut client_player = None;
 
         let project_root = env!("CARGO_MANIFEST_DIR");
-        let file = File::open(format!("{}/src/scenes/scene_1.json", project_root))
+        let file = File::open(format!("{}/src/scenes/{}.json", project_root, SCENE_NAME))
             .expect("Scene file must open");
         let scene: Scene = serde_json::from_reader(file).expect("JSON must match Scene");
         let mut last_frame = Instant::now();
