@@ -1,15 +1,15 @@
 use crate::state::{GameState, PlayerState};
 use crate::{
-    Scene, SceneObject, FONT_SIZE, PLAYER_SIZE, SCREEN_CLAMP_DISTANCE_X,
-    SCREEN_CLAMP_DISTANCE_Y, SCREEN_HEIGHT, SCREEN_WIDTH,
+    FONT_SIZE, PLAYER_SIZE, SCREEN_CLAMP_DISTANCE_X, SCREEN_CLAMP_DISTANCE_Y, SCREEN_HEIGHT,
+    SCREEN_WIDTH, Scene, SceneObject,
 };
 use macroquad::color::{BEIGE, BLUE, GREEN, ORANGE, PINK, PURPLE, RED, WHITE};
-use macroquad::math::{vec2, Vec2};
+use macroquad::math::{Vec2, vec2};
 use macroquad::shapes::draw_rectangle;
 use macroquad::text::draw_text;
 use macroquad::window::{clear_background, screen_height, screen_width};
 
-pub fn render(game_state: &GameState, client_player: &Option<PlayerState>, scene: &Scene) {
+pub fn render(game_state: &GameState, client_player_id: u32, scene: &Scene) {
     let window_w = screen_width();
     let window_h = screen_height();
     let scale_x = window_w / SCREEN_WIDTH;
@@ -19,14 +19,11 @@ pub fn render(game_state: &GameState, client_player: &Option<PlayerState>, scene
     let draw_h = SCREEN_HEIGHT * scale;
     let offset = vec2((window_w - draw_w) / 2.0, (window_h - draw_h) / 2.0);
 
-    let client_player_id = match client_player {
-        Some(player) => player.id,
-        None => 0,
-    };
-
-    let (px, py) = client_player
-        .as_ref()
-        .map(|p| (p.pos.x, p.pos.y))
+    let (px, py) = game_state
+        .players
+        .iter()
+        .find(|p| *p.0 == client_player_id)
+        .map(|p| (p.1.pos.x, p.1.pos.y))
         .unwrap_or((0.0, 0.0));
 
     let cam_pos = {
@@ -88,12 +85,6 @@ pub fn render(game_state: &GameState, client_player: &Option<PlayerState>, scene
     );
     for obj in objects.iter().filter(|o| o.z >= 0.0) {
         draw_scene_obj(obj, scale, offset, screen_center_scaled, cam_pos);
-    }
-
-    // Draw client player if exists
-    if let Some(client_player) = client_player {
-        draw_player(scale, world_offset, (&client_player_id, client_player));
-        println!("Client player drawn");
     }
 
     // players

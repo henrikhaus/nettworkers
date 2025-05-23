@@ -25,7 +25,7 @@ const SCREEN_HEIGHT: f32 = 360.0;
 const SCREEN_CLAMP_DISTANCE_X: f32 = 200.0;
 const SCREEN_CLAMP_DISTANCE_Y: f32 = 400.0;
 const FONT_SIZE: f32 = 8.0;
-const DELAY_MS: u64 = 300;
+const DELAY_MS: u64 = 1000;
 const SCENE_NAME: &str = "scene_1";
 
 const SCALE: f32 = 1.0;
@@ -108,7 +108,7 @@ impl Client {
         let mut sequence: u32 = 0;
 
         let mut game_state = GameState::new(SCENE_NAME);
-        let mut client_player = None;
+        let mut client_player_id = 1;
 
         let project_root = env!("CARGO_MANIFEST_DIR");
         let file = File::open(format!("{}/../scenes/{}.json", project_root, SCENE_NAME))
@@ -119,9 +119,17 @@ impl Client {
         loop {
             // Get new game state (if available)
             if let Ok((server_game_state, server_client_player)) = state_receiver.try_recv() {
-                game_state = server_game_state;
+                println!(
+                    "New game state, players.len(): {}, client_player_id: {}",
+                    server_game_state.players.len(),
+                    server_client_player.id
+                );
 
-                client_player = Some(server_client_player);
+                client_player_id = server_client_player.id;
+                game_state.players = server_game_state.players;
+                game_state
+                    .players
+                    .insert(server_client_player.id, server_client_player);
             }
 
             // Get accurate frame timing
@@ -135,25 +143,37 @@ impl Client {
                 .unwrap_or_default()
                 .as_micros() as u64;
 
-            // Get commands and send to network thread
+            // Get commands
             let commands = input_handler();
-            if !commands.is_empty() {
-                let player_state_command = PlayerStateCommand {
+            let player_state_command = match commands.is_empty() {
+                true => None,
+                false => Some(PlayerStateCommand {
                     sequence,
                     dt_micro,
                     commands,
                     client_timestamp_micro: unix_timestamp_micro,
-                };
+                }),
+            };
 
+            // Mutate local state
+            if let Some(player_state_command) = player_state_command {
+                game_state.mutate(
+                    &[(client_player_id, player_state_command.clone())],
+                    dt_micro,
+                );
+
+                // Send to network thread
                 if let Err(e) = self.command_sender.send(player_state_command) {
                     eprintln!("Error sending player state command: {}", e);
                 } else {
                     sequence += 1;
                 }
-            };
+            } else {
+                game_state.mutate(&[], dt_micro);
+            }
 
             // Rendering game
-            render(&game_state, &client_player, &scene);
+            render(&game_state, client_player_id, &scene);
 
             next_frame().await;
         }

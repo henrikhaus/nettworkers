@@ -5,6 +5,7 @@ mod physics;
 use crate::generated::{self, Color};
 use serde::Deserialize;
 use std::collections::HashMap;
+use std::fmt::Display;
 use std::fs::File;
 
 // Settings
@@ -25,6 +26,12 @@ pub const PLAYER_ACCELERATION: f32 = 3.0;
 pub struct Vec2 {
     pub x: f32,
     pub y: f32,
+}
+
+impl Display for Vec2 {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "({}, {})", self.x, self.y)
+    }
 }
 
 impl Vec2 {
@@ -85,6 +92,7 @@ impl PlayerState {
     }
 }
 
+#[derive(Debug, Clone)]
 pub struct PlayerStateCommand {
     pub sequence: u32,
     pub dt_micro: u64,

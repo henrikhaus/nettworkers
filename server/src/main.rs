@@ -10,7 +10,7 @@ use std::thread::sleep;
 use std::time::{Duration, Instant};
 
 const SCENE_NAME: &str = "scene_1";
-const TICK_DURATION: Duration = Duration::from_millis(16);
+const TICK_DURATION: Duration = Duration::from_millis(1000);
 const SERVER_ADDR: &str = "127.0.0.1:9000";
 
 struct Server {
@@ -90,7 +90,7 @@ impl Server {
             let mut last_tick = Instant::now();
             loop {
                 let start = Instant::now();
-                let dt = start.duration_since(last_tick).as_secs_f32();
+                let dt_micros = start.duration_since(last_tick).as_micros() as u64;
                 last_tick = start;
 
                 let mut commands = Vec::new();
@@ -98,7 +98,7 @@ impl Server {
                     commands.push((player_id, command));
                 }
 
-                self.tick(&mut game_state, &commands, dt);
+                self.tick(&mut game_state, &commands, dt_micros);
                 self.broadcast_state(&game_state);
 
                 for (player_id, player) in &game_state.players {
@@ -131,8 +131,13 @@ impl Server {
         }
     }
 
-    fn tick(&self, game_state: &mut GameState, commands: &[(u32, PlayerStateCommand)], dt: f32) {
-        game_state.mutate(commands, dt);
+    fn tick(
+        &self,
+        game_state: &mut GameState,
+        commands: &[(u32, PlayerStateCommand)],
+        dt_micros: u64,
+    ) {
+        game_state.mutate(commands, dt_micros);
     }
 }
 

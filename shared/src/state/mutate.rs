@@ -1,13 +1,12 @@
-use super::{physics::*, GameState, PlayerState, PlayerStateCommand};
+use super::{GameState, PlayerState, PlayerStateCommand, physics::*};
 use crate::generated::PlayerCommand;
 
 use super::{JUMP_CD, JUMP_FORCE, PLAYER_ACCELERATION};
 
 impl GameState {
-    pub fn mutate(&mut self, commands: &[(u32, PlayerStateCommand)], tick_dt: f32) {
+    pub fn mutate(&mut self, commands: &[(u32, PlayerStateCommand)], tick_micro: u64) {
         for (player_id, player_state_command) in commands {
             let client_dt = (player_state_command.dt_micro / 1000) as f32;
-            println!("PlayerID: {}", player_id);
             // Get player, add to game state if not exists
             let player = match self.players.get_mut(player_id) {
                 Some(player) => player,
@@ -31,12 +30,12 @@ impl GameState {
         }
 
         // Physics
-        let mut accumulator = tick_dt;
+        let mut accumulator = tick_micro as f64 / 1000000.0;
         let fixed_dt = 0.016; // 16 ms
 
         while accumulator > 0.0 {
             let step = accumulator.min(fixed_dt);
-            physics(self, step);
+            physics(self, step as f32);
             accumulator -= step;
         }
 
@@ -61,6 +60,7 @@ impl PlayerState {
     }
 
     fn handle_jump(&mut self) {
+        println!("Player jumped!");
         if self.grounded && self.jump_timer > JUMP_CD {
             self.vel.y -= JUMP_FORCE;
             self.jump_timer = 0.0;
