@@ -3,12 +3,12 @@ use macroquad::math::f32;
 use macroquad::prelude::*;
 use serde::Deserialize;
 use state::{GameState, PlayerState, PlayerStateCommand};
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 use std::fs::File;
 use std::net::UdpSocket;
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::sync::Arc;
-use std::time::{Instant, SystemTime, UNIX_EPOCH};
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use std::{io, thread};
 
 mod generated;
@@ -23,6 +23,8 @@ const PLAYER_SIZE: f32 = 16.0;
 const SCREEN_WIDTH: f32 = 640.0;
 const SCREEN_HEIGHT: f32 = 360.0;
 const FONT_SIZE: f32 = 8.0;
+const DELAY_MS: u64 = 300;
+const SCENE_NAME: &str = "scene_1";
 
 const SCALE: f32 = 1.0;
 const FULLSCREEN: bool = false;
@@ -103,11 +105,11 @@ impl Client {
     ) -> io::Result<()> {
         let mut sequence: u32 = 0;
 
-        let mut game_state = GameState::new("scene_1");
+        let mut game_state = GameState::new(SCENE_NAME);
         let mut client_player = None;
 
         let project_root = env!("CARGO_MANIFEST_DIR");
-        let file = File::open(format!("{}/src/scenes/scene_1.json", project_root))
+        let file = File::open(format!("{}/src/scenes/{}.json", project_root, SCENE_NAME))
             .expect("Scene file must open");
         let scene: Scene = serde_json::from_reader(file).expect("JSON must match Scene");
         let mut last_frame = Instant::now();
@@ -164,32 +166,62 @@ impl Client {
     ) -> io::Result<thread::JoinHandle<()>> {
         self.socket.set_nonblocking(true)?;
 
+        let mut server_state_queue = VecDeque::new();
+        let mut command_queue = VecDeque::new();
+
         Ok(thread::spawn(move || {
             let mut buf = [0u8; 2048];
             loop {
-                let server_game_state = match self.socket.recv_from(&mut buf) {
-                    Ok((amt, src_addr)) => {
-                        if src_addr.to_string() != SERVER_ADDR {
-                            continue;
-                        };
-                        Some(GameState::deserialize(&buf[..amt]))
-                    }
-                    Err(_) => None,
+                if let Ok((amt, src_addr)) = self.socket.recv_from(&mut buf) {
+                    if src_addr.to_string() != SERVER_ADDR {
+                        continue;
+                    };
+
+                    let apply_when = Instant::now() + Duration::from_millis(DELAY_MS);
+                    server_state_queue.push_back((apply_when, GameState::deserialize(&buf[..amt])));
                 };
 
-                if let Some(game_state) = server_game_state {
-                    self.state_sender.send(game_state).unwrap();
+                let mut last_valid_state = None;
+                while let Some((apply_when, _)) = server_state_queue.front() {
+                    if Instant::now() >= *apply_when {
+                        if let Some((_, game_state)) = server_state_queue.pop_front() {
+                            last_valid_state = Some(game_state);
+                        }
+                    } else {
+                        break;
+                    }
                 }
 
-                // Send commands to server
-                while let Ok(player_state_command) = command_receiver.try_recv() {
-                    let mut builder = FlatBufferBuilder::with_capacity(2048);
-                    let serialized_commands = player_state_command.serialize(&mut builder);
-                    builder.finish(serialized_commands, None);
+                // Send to game loop if new state is popped from the queue
+                if let Some(game_state) = last_valid_state {
+                    if let Err(e) = self.state_sender.send(game_state) {
+                        eprintln!("Error sending game state: {}", e);
+                    }
+                }
 
-                    self.socket
-                        .send_to(builder.finished_data(), SERVER_ADDR)
-                        .expect("Packet couldn't send.");
+                // Add commands to queue
+                while let Ok(player_state_command) = command_receiver.try_recv() {
+                    command_queue.push_back((
+                        Instant::now() + Duration::from_micros(DELAY_MS),
+                        player_state_command,
+                    ));
+                }
+
+                // Send commands to server when ready
+                while let Some((apply_when, _)) = command_queue.front() {
+                    if Instant::now() >= *apply_when {
+                        if let Some((_, player_state_command)) = command_queue.pop_front() {
+                            let mut builder = FlatBufferBuilder::with_capacity(2048);
+                            let serialized_commands = player_state_command.serialize(&mut builder);
+                            builder.finish(serialized_commands, None);
+                            let bytes = builder.finished_data();
+                            self.socket
+                                .send_to(bytes, SERVER_ADDR)
+                                .expect("Packet couldn't send.");
+                        }
+                    } else {
+                        break;
+                    }
                 }
             }
         }))
