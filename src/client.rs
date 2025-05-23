@@ -22,6 +22,8 @@ const SERVER_ADDR: &str = "127.0.0.1:9000";
 const PLAYER_SIZE: f32 = 16.0;
 const SCREEN_WIDTH: f32 = 640.0;
 const SCREEN_HEIGHT: f32 = 360.0;
+const SCREEN_CLAMP_DISTANCE_X: f32 = 200.0;
+const SCREEN_CLAMP_DISTANCE_Y: f32 = 400.0;
 const FONT_SIZE: f32 = 8.0;
 
 const SCALE: f32 = 1.0;
