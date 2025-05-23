@@ -8,9 +8,29 @@ use crate::generated::PlayerCommand;
 
 use super::{JUMP_CD, JUMP_FORCE, PLAYER_ACCELERATION};
 
-struct EffectToExecute {
+struct ScheduledEffect {
     execute_at: u64,
     effect: Box<dyn FnMut()>,
+}
+
+impl Eq for ScheduledEffect {}
+
+impl PartialEq for ScheduledEffect {
+    fn eq(&self, other: &Self) -> bool {
+        self.execute_at == other.execute_at
+    }
+}
+
+impl PartialOrd for ScheduledEffect {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for ScheduledEffect {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        other.execute_at.cmp(&self.execute_at)
+    }
 }
 
 impl GameState {
@@ -18,7 +38,7 @@ impl GameState {
         let end_tick = Instant::now();
         let start_tick = end_tick - Duration::from_micros(tick_micro);
 
-        let mut when_to_execute = BinaryHeap::new();
+        let mut effect_heap = BinaryHeap::new();
 
         for (player_id, player_state_command, relative_delay) in commands {
             let client_dt = (player_state_command.dt_micro / 1000) as f32;
@@ -35,7 +55,7 @@ impl GameState {
 
             // Execute commands
             for command in &player_state_command.commands {
-                let effect = EffectToExecute {
+                let effect = ScheduledEffect {
                     execute_at: player_state_command.client_timestamp_micro + *relative_delay,
                     effect: Box::new(move || match *command {
                         PlayerCommand::Move_right => player.handle_move_right(client_dt),
@@ -48,6 +68,7 @@ impl GameState {
                 // REMEBER TO ADD EFFECT TO QUEUE, MAKE IT MIN by exectue_at
                 // ALSO EXECUTE ALL EFFECT THAT HAVE TIME LESS THAN START TICK
                 // AND EXECUTE ALL EFFECTS THAT HAVE TIME MORE THAN END TICK AT THE END OF PHYSICS
+                effect_heap.push(effect);
             }
         }
 
