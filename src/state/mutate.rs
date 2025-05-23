@@ -8,10 +8,12 @@ use super::{JUMP_CD, JUMP_FORCE, PLAYER_ACCELERATION};
 impl GameState {
     pub fn mutate(&mut self, commands: &[(u32, PlayerCommand)], dt: f32) {
         for (player_id, command) in commands {
+            println!("PlayerID: {}", player_id);
             // Get player, add to game state if not exists
             let player = match self.players.get_mut(player_id) {
                 Some(player) => player,
                 None => {
+                    println!("Player {} not found, creating player", player_id);
                     let new_player = PlayerState::new(*player_id, &self.spawn_point);
                     self.players.insert(*player_id, new_player);
                     self.players.get_mut(player_id).unwrap()

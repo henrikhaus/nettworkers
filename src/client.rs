@@ -2,16 +2,17 @@ use flatbuffers::FlatBufferBuilder;
 use macroquad::math::f32;
 use macroquad::prelude::*;
 use serde::Deserialize;
-use state::GameState;
+use state::{GameState, PlayerState, PlayerStateCommand};
 use std::collections::HashMap;
 use std::fs::File;
 use std::net::UdpSocket;
-use std::sync::{Arc, Mutex};
-use std::thread;
+use std::sync::mpsc::{self, Receiver, Sender};
+use std::sync::Arc;
+use std::{io, thread};
+
 #[allow(dead_code, unused_imports)]
 #[path = "../game_state_generated.rs"]
 mod game_state_generated;
-use crate::game_state_generated::Color;
 #[path = "../player_commands_generated.rs"]
 mod player_commands_generated;
 mod render;
@@ -48,12 +49,6 @@ struct SceneObject {
 }
 
 #[derive(Debug, Deserialize)]
-struct SpawnPoint {
-    x: f32,
-    y: f32,
-}
-
-#[derive(Debug, Deserialize)]
 struct Scene {
     decorations: HashMap<u32, SceneObject>,
     collidables: HashMap<u32, SceneObject>,
@@ -61,20 +56,6 @@ struct Scene {
     height: f32,
     background_color: RgbaColor,
     border_color: RgbaColor,
-}
-
-struct ClientPlayer {
-    id: Option<usize>,
-    pos: Vec2,
-    color: Color,
-}
-
-struct OwnedPlayer {
-    id: u32,
-    x: f32,
-    y: f32,
-    name: String,
-    color: Color,
 }
 
 fn window_conf() -> Conf {
@@ -91,72 +72,134 @@ fn window_conf() -> Conf {
     }
 }
 
-#[macroquad::main(window_conf)]
-async fn main() {
-    let mut sequence: u32 = 0;
+struct Client {
+    socket: UdpSocket,
+    command_sender: Sender<PlayerStateCommand>,
+    state_sender: Sender<(GameState, PlayerState)>,
+}
 
-    let file = File::open("src/scenes/scene_1.json").expect("Scene file must open");
-    let scene: Scene = serde_json::from_reader(file).expect("JSON must match Scene");
+type NewClientResult = io::Result<(
+    Client,
+    Receiver<PlayerStateCommand>,
+    Receiver<(GameState, PlayerState)>,
+)>;
 
-    let socket = Arc::new(UdpSocket::bind(CLIENT_ADDR).unwrap());
-    let game_state: Arc<Mutex<GameState>> = Arc::new(Mutex::new(GameState::new("scene_1")));
-    let mut commands: Vec<PlayerCommand> = Vec::new();
+impl Client {
+    fn new() -> NewClientResult {
+        let socket = UdpSocket::bind(CLIENT_ADDR)?;
+        let (command_sender, command_receiver) = mpsc::channel();
+        let (state_sender, state_receiver) = mpsc::channel();
 
-    let tick_game_state = Arc::clone(&game_state);
-    let tick_socket = Arc::clone(&socket);
+        Ok((
+            Client {
+                socket,
+                command_sender,
+                state_sender,
+            },
+            command_receiver,
+            state_receiver,
+        ))
+    }
 
-    thread::spawn(move || {
-        let mut buf = [0u8; 2048];
+    async fn start_game_loop(
+        self: Arc<Self>,
+        state_receiver: Receiver<(GameState, PlayerState)>,
+    ) -> io::Result<()> {
+        let mut sequence: u32 = 0;
+
+        let mut game_state = GameState::new("scene_1");
+        let mut client_player = None;
+
+        let file = File::open("src/scenes/scene_1.json").expect("Scene file must open");
+        let scene: Scene = serde_json::from_reader(file).expect("JSON must match Scene");
+
         loop {
-            let (amt, src_addr) = socket.recv_from(&mut buf).unwrap();
-            if src_addr.to_string() != SERVER_ADDR {
-                continue;
-            };
-            let mut game_state_guard = game_state.lock().unwrap();
-            handle_packet(&buf[..amt], &mut game_state_guard);
+            // Get new game state (if available)
+            if let Ok((server_game_state, server_client_player)) = state_receiver.try_recv() {
+                game_state = server_game_state;
+                game_state
+                    .players
+                    .insert(server_client_player.id, server_client_player.clone());
 
-            drop(game_state_guard);
-        }
-    });
+                client_player = Some(server_client_player);
+            }
 
-    loop {
-        input_handler(&mut commands);
-        if !commands.is_empty() {
-            let mut builder = FlatBufferBuilder::with_capacity(2048);
-            let commands_vec = builder.create_vector(&commands);
-            let player_command = PlayerCommands::create(
-                &mut builder,
-                &PlayerCommandsArgs {
+            // Get commands and send to network thread
+            let commands = input_handler();
+            if !commands.is_empty() {
+                let player_state_command = PlayerStateCommand {
                     sequence,
                     dt_sec: 0.0,
-                    commands: Some(commands_vec),
-                    client_timestamp: 0.0,
-                },
-            );
-            sequence += 1;
-            builder.finish(player_command, None);
-            let bytes = builder.finished_data();
-            tick_socket
-                .send_to(bytes, SERVER_ADDR)
-                .expect("Packet couldn't send.");
+                    commands,
+                    client_timestamp: 0,
+                };
+
+                if let Err(e) = self.command_sender.send(player_state_command) {
+                    eprintln!("Error sending player state command: {}", e);
+                } else {
+                    sequence += 1;
+                }
+            };
+
+            // Rendering game
+            render(&game_state, &client_player, &scene);
+
+            next_frame().await;
         }
-        commands.clear();
+    }
 
-        let game_state_guard = tick_game_state.lock().unwrap();
+    fn start_network_thread(
+        self: Arc<Client>,
+        command_receiver: Receiver<PlayerStateCommand>,
+    ) -> io::Result<thread::JoinHandle<()>> {
+        self.socket.set_nonblocking(true)?;
 
-        render(&game_state_guard, &scene);
-        drop(game_state_guard);
-        next_frame().await;
+        Ok(thread::spawn(move || {
+            let mut buf = [0u8; 2048];
+            loop {
+                let server_game_state = match self.socket.recv_from(&mut buf) {
+                    Ok((amt, src_addr)) => {
+                        if src_addr.to_string() != SERVER_ADDR {
+                            continue;
+                        };
+                        Some(GameState::deserialize(&buf[..amt]))
+                    }
+                    Err(_) => None,
+                };
+
+                if let Some(game_state) = server_game_state {
+                    self.state_sender.send(game_state).unwrap();
+                }
+
+                // Send commands to server
+                while let Ok(player_state_command) = command_receiver.try_recv() {
+                    let mut builder = FlatBufferBuilder::with_capacity(2048);
+                    let serialized_commands = player_state_command.serialize(&mut builder);
+                    builder.finish(serialized_commands, None);
+
+                    self.socket
+                        .send_to(builder.finished_data(), SERVER_ADDR)
+                        .expect("Packet couldn't send.");
+                }
+            }
+        }))
     }
 }
 
-fn handle_packet(packet: &[u8], game_state: &mut GameState) {
-    let (new_game_state, client_player) = GameState::deserialize(packet);
-    *game_state = new_game_state;
-    game_state.players.insert(client_player.id, client_player);
+#[macroquad::main(window_conf)]
+async fn main() -> io::Result<()> {
+    let (client, command_receiver, state_receiver) = Client::new()?;
+    let client_arc = Arc::new(client);
+
+    client_arc
+        .clone()
+        .start_network_thread(command_receiver)
+        .expect("Failed to start network thread");
+    client_arc.clone().start_game_loop(state_receiver).await
 }
 
-fn input_handler(commands: &mut Vec<PlayerCommand>) {
+fn input_handler() -> Vec<PlayerCommand> {
+    let mut commands = Vec::new();
     if is_key_down(KeyCode::Right) || is_key_down(KeyCode::D) {
         commands.push(PlayerCommand::Move_right);
     }
@@ -166,4 +209,6 @@ fn input_handler(commands: &mut Vec<PlayerCommand>) {
     if is_key_down(KeyCode::Up) || is_key_down(KeyCode::W) || is_key_down(KeyCode::Space) {
         commands.push(PlayerCommand::Jump);
     }
+
+    commands
 }

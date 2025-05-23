@@ -1,4 +1,4 @@
-use crate::state::GameState;
+use crate::state::{GameState, PlayerState};
 use crate::{Scene, SceneObject, FONT_SIZE, PLAYER_SIZE, SCREEN_HEIGHT, SCREEN_WIDTH};
 use macroquad::color::{BEIGE, BLUE, GREEN, ORANGE, PINK, PURPLE, RED, WHITE};
 use macroquad::math::{vec2, Vec2};
@@ -6,7 +6,7 @@ use macroquad::shapes::draw_rectangle;
 use macroquad::text::draw_text;
 use macroquad::window::{clear_background, screen_height, screen_width};
 
-pub fn render(game_state: &GameState, scene: &Scene) {
+pub fn render(game_state: &GameState, client_player: &Option<PlayerState>, scene: &Scene) {
     let w = screen_width();
     let h = screen_height();
     let scale_x = w / SCREEN_WIDTH;
@@ -16,16 +16,18 @@ pub fn render(game_state: &GameState, scene: &Scene) {
     let draw_h = SCREEN_HEIGHT * scale;
     let offset = vec2((w - draw_w) / 2.0, (h - draw_h) / 2.0);
 
-    let my_id = 1;
+    let client_player_id = match client_player {
+        Some(player) => player.id,
+        None => 0,
+    };
+
     let (px, py) = game_state
         .players
         .iter()
-        .find(|p| *p.0 == my_id)
+        .find(|p| *p.0 == client_player_id)
         .map(|p| (p.1.pos.x, p.1.pos.y))
         .unwrap_or((0.0, 0.0));
-    // println!("px: {}, py: {}", px, py);
-    let half_w = SCREEN_WIDTH / scale;
-    let half_h = SCREEN_HEIGHT / scale;
+
     let cam_pos = vec2(px.clamp(20.0, w - 20.0), py.clamp(20.0, w - 20.0));
     let world_offset = vec2(
         offset.x + SCREEN_WIDTH * scale / 2.0 - cam_pos.x * scale,

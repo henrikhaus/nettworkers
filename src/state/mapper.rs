@@ -1,9 +1,9 @@
 use flatbuffers::{root, FlatBufferBuilder, WIPOffset};
 use std::collections::HashMap;
 
-use crate::game_state_generated::{self};
+use crate::{game_state_generated, player_commands_generated};
 
-use super::{GameState, PlayerState, SpawnPoint, Vec2};
+use super::{GameState, PlayerState, PlayerStateCommand, SpawnPoint, Vec2};
 
 impl GameState {
     pub fn serialize<'a>(
@@ -11,7 +11,10 @@ impl GameState {
         builder: &'a mut FlatBufferBuilder,
         client_player_id: u32,
     ) -> &'a [u8] {
-        let client_player = self.players.get(&client_player_id).unwrap();
+        let client_player = self
+            .players
+            .get(&client_player_id)
+            .expect("Game state should always contain the client player");
         let players_offsets: Vec<_> = self
             .players
             .iter()
@@ -19,9 +22,7 @@ impl GameState {
             .map(|(&_, player_state)| player_state.offset_player(builder))
             .collect();
 
-
         let players_vec = builder.create_vector(&players_offsets);
-
 
         let client_player_offset = client_player.offset_client_player(builder);
         let players_list = game_state_generated::GameState::create(
@@ -131,6 +132,24 @@ impl PlayerState {
                 pos: Some(&game_state_generated::Vector2::new(self.pos.x, self.pos.y)),
                 size: self.size,
                 color: self.color,
+            },
+        )
+    }
+}
+
+impl PlayerStateCommand {
+    pub fn serialize<'fbb>(
+        &self,
+        builder: &mut flatbuffers::FlatBufferBuilder<'fbb>,
+    ) -> WIPOffset<player_commands_generated::PlayerCommands<'fbb>> {
+        let commands_vec = builder.create_vector(&self.commands);
+        player_commands_generated::PlayerCommands::create(
+            builder,
+            &player_commands_generated::PlayerCommandsArgs {
+                sequence: self.sequence,
+                dt_sec: self.dt_sec,
+                commands: Some(commands_vec),
+                client_timestamp: 0.,
             },
         )
     }
