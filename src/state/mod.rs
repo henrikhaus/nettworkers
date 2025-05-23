@@ -2,8 +2,7 @@ mod mapper;
 mod mutate;
 mod physics;
 
-use crate::game_state_generated::Color;
-use crate::player_commands_generated;
+use crate::generated::{self, Color};
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::fs::File;
@@ -88,10 +87,10 @@ impl PlayerState {
 
 pub struct PlayerStateCommand {
     pub sequence: u32,
-    pub dt_sec: f32,
+    pub dt_micro: u64,
     // Mutliple commands because the player can for example jump and move in the same frame
-    pub commands: Vec<player_commands_generated::PlayerCommand>,
-    pub client_timestamp: u32,
+    pub commands: Vec<generated::PlayerCommand>,
+    pub client_timestamp_micro: u64,
 }
 
 #[derive(Clone)]
@@ -105,8 +104,9 @@ pub struct GameState {
 
 impl GameState {
     pub fn new(scene_name: &str) -> GameState {
-        let file =
-            File::open(format!("src/scenes/{}.json", scene_name)).expect("Scene file must open");
+        let project_root = env!("CARGO_MANIFEST_DIR");
+        let file = File::open(format!("{}/src/scenes/{}.json", project_root, scene_name))
+            .expect("Scene file must open");
         let scene: Scene = serde_json::from_reader(file).expect("JSON must match Scene");
         let collidables: Vec<SceneObject> = scene.collidables.into_values().collect();
         let spawn_point: SpawnPoint = scene.spawn_point.clone();

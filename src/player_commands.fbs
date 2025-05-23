@@ -2,9 +2,9 @@ enum PlayerCommand:uint8 { Move_right, Move_left, Jump }
 
 table PlayerCommands {
     sequence: uint32;
-    dt_micro: int64;
+    dt_micro: uint64;
     commands: [PlayerCommand];
-    client_timestamp_micro: int64;
+    client_timestamp_micro: uint64;
 }
 
 root_type PlayerCommands;

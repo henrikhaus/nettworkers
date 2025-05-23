@@ -1,13 +1,11 @@
-use std::collections::VecDeque;
-
-use super::{physics::*, GameState, PlayerState};
-use crate::player_commands_generated::PlayerCommand;
+use super::{physics::*, GameState, PlayerState, PlayerStateCommand};
+use crate::generated::PlayerCommand;
 
 use super::{JUMP_CD, JUMP_FORCE, PLAYER_ACCELERATION};
 
 impl GameState {
-    pub fn mutate(&mut self, commands: &[(u32, PlayerCommand)], dt: f32) {
-        for (player_id, command) in commands {
+    pub fn mutate(&mut self, commands: &[(u32, PlayerStateCommand)], dt: f32) {
+        for (player_id, player_state_command) in commands {
             println!("PlayerID: {}", player_id);
             // Get player, add to game state if not exists
             let player = match self.players.get_mut(player_id) {
@@ -20,12 +18,14 @@ impl GameState {
                 }
             };
 
-            // Execute command
-            match *command {
-                PlayerCommand::Move_right => player.handle_move_right(),
-                PlayerCommand::Move_left => player.handle_move_left(),
-                PlayerCommand::Jump => self.players.get_mut(player_id).unwrap().handle_jump(),
-                _ => {}
+            // Execute commands
+            for command in &player_state_command.commands {
+                match *command {
+                    PlayerCommand::Move_right => player.handle_move_right(),
+                    PlayerCommand::Move_left => player.handle_move_left(),
+                    PlayerCommand::Jump => player.handle_jump(),
+                    _ => {}
+                }
             }
         }
 

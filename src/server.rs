@@ -1,5 +1,5 @@
 use flatbuffers::{root, FlatBufferBuilder};
-use state::GameState;
+use state::{GameState, PlayerStateCommand};
 use std::collections::HashMap;
 use std::io;
 use std::net::{SocketAddr, UdpSocket};
@@ -9,27 +9,21 @@ use std::thread;
 use std::thread::sleep;
 use std::time::{Duration, Instant};
 
+mod generated;
 mod state;
-
-#[allow(dead_code, unused_imports)]
-#[path = "../game_state_generated.rs"]
-mod game_state_generated;
-#[path = "../player_commands_generated.rs"]
-mod player_commands_generated;
-use crate::player_commands_generated::{PlayerCommand, PlayerCommands};
 
 const SCENE_NAME: &str = "scene_1";
 const TICK_DURATION: Duration = Duration::from_millis(16);
 const SERVER_ADDR: &str = "127.0.0.1:9000";
 
 struct Server {
-    command_sender: Sender<(u32, PlayerCommand)>,
+    command_sender: Sender<(u32, PlayerStateCommand)>,
     ip_to_player_id: Arc<Mutex<HashMap<SocketAddr, u32>>>,
     socket: UdpSocket,
 }
 
 impl Server {
-    fn new() -> io::Result<(Server, Receiver<(u32, PlayerCommand)>)> {
+    fn new() -> io::Result<(Server, Receiver<(u32, PlayerStateCommand)>)> {
         let socket = UdpSocket::bind(SERVER_ADDR)?;
         let (command_sender, command_receiver) = mpsc::channel();
 
@@ -45,14 +39,12 @@ impl Server {
     }
 
     fn handle_packet(&self, packet: &[u8], src_addr: SocketAddr) {
-        let player_commands = root::<PlayerCommands>(packet).expect("No command received");
+        let player_commands = PlayerStateCommand::deserialize(packet);
         let player_id = self.get_or_add_player_id(&src_addr);
 
-        if let Some(cmd_list) = player_commands.commands() {
-            for cmd in cmd_list {
-                if let Err(e) = self.command_sender.send((player_id, cmd)) {
-                    eprintln!("Failed to send command: {}", e);
-                }
+        if !player_commands.commands.is_empty() {
+            if let Err(e) = self.command_sender.send((player_id, player_commands)) {
+                eprintln!("Failed to send command: {}", e);
             }
         }
     }
@@ -92,7 +84,7 @@ impl Server {
             .collect()
     }
 
-    fn start_tick_thread(self: Arc<Self>, command_receiver: Receiver<(u32, PlayerCommand)>) {
+    fn start_tick_thread(self: Arc<Self>, command_receiver: Receiver<(u32, PlayerStateCommand)>) {
         println!("Starting tick thread!");
 
         let mut game_state = GameState::new(SCENE_NAME);
@@ -128,7 +120,7 @@ impl Server {
 
     pub fn run(
         self: Arc<Self>,
-        command_receiver: Receiver<(u32, PlayerCommand)>,
+        command_receiver: Receiver<(u32, PlayerStateCommand)>,
     ) -> io::Result<()> {
         Arc::clone(&self).start_tick_thread(command_receiver);
 
@@ -142,7 +134,7 @@ impl Server {
         }
     }
 
-    fn tick(&self, game_state: &mut GameState, commands: &[(u32, PlayerCommand)], dt: f32) {
+    fn tick(&self, game_state: &mut GameState, commands: &[(u32, PlayerStateCommand)], dt: f32) {
         game_state.mutate(commands, dt);
     }
 }
