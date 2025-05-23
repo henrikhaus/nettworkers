@@ -1,5 +1,5 @@
 use flatbuffers::FlatBufferBuilder;
-use state::{GameState, PlayerStateCommand};
+use shared::state::{GameState, PlayerStateCommand};
 use std::collections::HashMap;
 use std::io;
 use std::net::{SocketAddr, UdpSocket};
@@ -8,9 +8,6 @@ use std::sync::{Arc, Mutex};
 use std::thread;
 use std::thread::sleep;
 use std::time::{Duration, Instant};
-
-mod generated;
-mod state;
 
 const SCENE_NAME: &str = "scene_1";
 const TICK_DURATION: Duration = Duration::from_millis(16);
