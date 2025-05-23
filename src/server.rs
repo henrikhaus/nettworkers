@@ -1,4 +1,4 @@
-use flatbuffers::{root, FlatBufferBuilder};
+use flatbuffers::FlatBufferBuilder;
 use state::{GameState, PlayerStateCommand};
 use std::collections::HashMap;
 use std::io;
