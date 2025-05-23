@@ -122,6 +122,7 @@ impl Client {
                     .insert(server_client_player.id, server_client_player.clone());
 
                 client_player = Some(server_client_player);
+                println!("Received new game state");
             }
 
             // Get accurate frame timing
@@ -179,13 +180,20 @@ impl Client {
                     server_state_queue.push_back((apply_when, GameState::deserialize(&buf[..amt])));
                 };
 
+                let mut last_valid_state = None;
                 while let Some((apply_when, _)) = server_state_queue.front() {
                     if Instant::now() >= *apply_when {
                         if let Some((_, game_state)) = server_state_queue.pop_front() {
-                            if let Err(e) = self.state_sender.send(game_state) {
-                                eprintln!("Error sending game state: {}", e);
-                            }
+                            last_valid_state = Some(game_state);
                         }
+                    } else {
+                        break;
+                    }
+                }
+
+                if let Some(game_state) = last_valid_state {
+                    if let Err(e) = self.state_sender.send(game_state) {
+                        eprintln!("Error sending game state: {}", e);
                     }
                 }
 
