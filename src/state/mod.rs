@@ -2,8 +2,7 @@ mod mapper;
 mod mutate;
 mod physics;
 
-use crate::game_state_generated::Color;
-use crate::player_commands_generated;
+use crate::generated::{self, Color};
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::fs::File;
@@ -90,7 +89,7 @@ pub struct PlayerStateCommand {
     pub sequence: u32,
     pub dt_micro: i64,
     // Mutliple commands because the player can for example jump and move in the same frame
-    pub commands: Vec<player_commands_generated::PlayerCommand>,
+    pub commands: Vec<generated::PlayerCommand>,
     pub client_timestamp_micro: i64,
 }
 

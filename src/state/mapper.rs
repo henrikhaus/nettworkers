@@ -157,7 +157,9 @@ impl PlayerStateCommand {
             root::<generated::PlayerCommands>(packet).expect("No commands received");
         let commands = player_commands
             .commands()
-            .expect("Should have commands array");
+            .expect("Should have commands array")
+            .into_iter()
+            .collect();
         let sequence = player_commands.sequence();
         let dt_micro = player_commands.dt_micro();
         let client_timestamp_micro = player_commands.client_timestamp_micro();

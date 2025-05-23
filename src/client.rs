@@ -124,7 +124,7 @@ impl Client {
             if !commands.is_empty() {
                 let player_state_command = PlayerStateCommand {
                     sequence,
-                    dt_micro: 0.0,
+                    dt_micro: 0,
                     commands,
                     client_timestamp_micro: 0,
                 };

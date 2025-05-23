@@ -19,11 +19,11 @@ impl GameState {
             };
 
             // Execute commands
-            for command in player_state_command.commands {
+            for command in &player_state_command.commands {
                 match *command {
                     PlayerCommand::Move_right => player.handle_move_right(),
                     PlayerCommand::Move_left => player.handle_move_left(),
-                    PlayerCommand::Jump => self.players.get_mut(player_id).unwrap().handle_jump(),
+                    PlayerCommand::Jump => player.handle_jump(),
                     _ => {}
                 }
             }
