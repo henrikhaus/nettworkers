@@ -1,3 +1,5 @@
+#![allow(warnings)]
+
 mod game_state_generated;
 mod player_commands_generated;
 

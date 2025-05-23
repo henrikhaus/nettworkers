@@ -1,6 +1,6 @@
 use crate::state::{GameState, PlayerState};
 use crate::{
-    Scene, SceneObject, FONT_SIZE, PLAYER_SIZE, SCALE, SCREEN_CLAMP_DISTANCE_X,
+    Scene, SceneObject, FONT_SIZE, PLAYER_SIZE, SCREEN_CLAMP_DISTANCE_X,
     SCREEN_CLAMP_DISTANCE_Y, SCREEN_HEIGHT, SCREEN_WIDTH,
 };
 use macroquad::color::{BEIGE, BLUE, GREEN, ORANGE, PINK, PURPLE, RED, WHITE};
