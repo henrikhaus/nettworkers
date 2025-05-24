@@ -4,6 +4,7 @@ use macroquad::prelude::*;
 use serde::Deserialize;
 use shared::generated;
 use shared::state;
+use shared::state::CommandContent;
 use state::{GameState, PlayerState, PlayerStateCommand};
 use std::collections::{HashMap, VecDeque};
 use std::fs::File;
@@ -77,8 +78,9 @@ fn window_conf() -> Conf {
 }
 
 struct ReconciliationCommand {
-    command: PlayerStateCommand,
+    command: Option<CommandContent>,
     frame_dt_micros: u64,
+    sequence: u32,
 }
 
 struct Client {
@@ -125,14 +127,14 @@ impl Client {
 
         let mut ui = UiContext::new();
         let mut ui_state = UiState::new();
-        let mut unconfirmed_commands: Vec<ReconciliationCommand> = Vec::new();
+        let mut unconfirmed_state: Vec<ReconciliationCommand> = Vec::new();
 
         loop {
             // Get new game state (if available)
             if let Ok((server_game_state, server_client_player, server_sequence)) =
                 state_receiver.try_recv()
             {
-                unconfirmed_commands.retain(|c| c.command.sequence > server_sequence);
+                unconfirmed_state.retain(|c| c.sequence > server_sequence);
                 client_player_id = server_client_player.id;
                 game_state.players = server_game_state.players;
                 game_state
@@ -140,10 +142,14 @@ impl Client {
                     .insert(server_client_player.id, server_client_player);
 
                 // reconciliation
-                for reconciliation_command in &unconfirmed_commands {
-                    let command = reconciliation_command.command.clone();
-                    let dt_micros = reconciliation_command.frame_dt_micros;
-                    game_state.mutate(&[(client_player_id, command, 0)], dt_micros);
+                for reconciliation_frame in &unconfirmed_state {
+                    let dt_micros = reconciliation_frame.frame_dt_micros;
+
+                    if let Some(command) = &reconciliation_frame.command {
+                        game_state.mutate(&[command.clone()], dt_micros);
+                    } else {
+                        game_state.mutate(&[], dt_micros);
+                    };
                 }
             }
 
@@ -172,14 +178,15 @@ impl Client {
 
             // Mutate local state
             if let Some(player_state_command) = player_state_command {
-                unconfirmed_commands.push(ReconciliationCommand {
-                    command: player_state_command.clone(),
-                    frame_dt_micros: dt_micro,
-                });
                 game_state.mutate(
                     &[(client_player_id, player_state_command.clone(), 0)],
                     dt_micro,
                 );
+                unconfirmed_state.push(ReconciliationCommand {
+                    command: Some((client_player_id, player_state_command.clone(), 0)),
+                    frame_dt_micros: dt_micro,
+                    sequence,
+                });
 
                 // Send to network thread
                 if let Err(e) = self.command_sender.send(player_state_command) {
@@ -189,6 +196,11 @@ impl Client {
                 }
             } else {
                 game_state.mutate(&[], dt_micro);
+                unconfirmed_state.push(ReconciliationCommand {
+                    command: None,
+                    frame_dt_micros: dt_micro,
+                    sequence,
+                });
             }
 
             // Rendering game
