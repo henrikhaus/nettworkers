@@ -73,11 +73,11 @@ impl Server {
         new_player_id
     }
 
-    fn broadcast_state(&self, game_state: &GameState) {
+    fn broadcast_state(&self, game_state: &GameState, sequence: u32) {
         // Send data to client
         for (ip, player_id) in self.read_ip_id() {
             let mut builder = FlatBufferBuilder::with_capacity(2048);
-            let bytes = game_state.serialize(&mut builder, player_id);
+            let bytes = game_state.serialize(&mut builder, player_id, sequence);
             if let Err(e) = self.socket.send_to(bytes, ip) {
                 eprintln!("Failed to send data to client: {}", e);
             }
@@ -104,13 +104,15 @@ impl Server {
                 let dt_micros = start.duration_since(last_tick).as_micros() as u64;
                 last_tick = start;
 
+                let mut sequence = 0;
                 let mut commands = Vec::new();
                 while let Ok((player_id, command, player_delay_ms)) = command_receiver.try_recv() {
+                    sequence = sequence.max(command.sequence);
                     commands.push((player_id, command, player_delay_ms));
                 }
 
                 self.tick(&mut game_state, &commands, dt_micros);
-                self.broadcast_state(&game_state);
+                self.broadcast_state(&game_state, sequence);
 
                 let sleep_time = TICK_DURATION.checked_sub(start.elapsed());
                 if let Some(sleep_time) = sleep_time {

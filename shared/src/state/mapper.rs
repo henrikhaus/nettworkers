@@ -1,5 +1,5 @@
 use crate::generated;
-use flatbuffers::{root, FlatBufferBuilder, WIPOffset};
+use flatbuffers::{FlatBufferBuilder, WIPOffset, root};
 use std::collections::HashMap;
 
 use super::{GameState, PlayerState, PlayerStateCommand, SpawnPoint, Vec2};
@@ -9,6 +9,7 @@ impl GameState {
         &self,
         builder: &'a mut FlatBufferBuilder,
         client_player_id: u32,
+        sequence: u32,
     ) -> &'a [u8] {
         let client_player = self
             .players
@@ -29,6 +30,7 @@ impl GameState {
             &generated::GameStateArgs {
                 players: Some(players_vec),
                 client_player: Some(client_player_offset),
+                sequence,
             },
         );
         builder.finish(players_list, None);

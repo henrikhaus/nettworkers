@@ -645,6 +645,7 @@ impl<'a> flatbuffers::Follow<'a> for GameState<'a> {
 impl<'a> GameState<'a> {
   pub const VT_CLIENT_PLAYER: flatbuffers::VOffsetT = 4;
   pub const VT_PLAYERS: flatbuffers::VOffsetT = 6;
+  pub const VT_SEQUENCE: flatbuffers::VOffsetT = 8;
 
   #[inline]
   pub unsafe fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
@@ -656,6 +657,7 @@ impl<'a> GameState<'a> {
     args: &'args GameStateArgs<'args>
   ) -> flatbuffers::WIPOffset<GameState<'bldr>> {
     let mut builder = GameStateBuilder::new(_fbb);
+    builder.add_sequence(args.sequence);
     if let Some(x) = args.players { builder.add_players(x); }
     if let Some(x) = args.client_player { builder.add_client_player(x); }
     builder.finish()
@@ -676,6 +678,13 @@ impl<'a> GameState<'a> {
     // which contains a valid value in this slot
     unsafe { self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, flatbuffers::ForwardsUOffset<Player>>>>(GameState::VT_PLAYERS, None)}
   }
+  #[inline]
+  pub fn sequence(&self) -> u32 {
+    // Safety:
+    // Created from valid Table for this object
+    // which contains a valid value in this slot
+    unsafe { self._tab.get::<u32>(GameState::VT_SEQUENCE, Some(0)).unwrap()}
+  }
 }
 
 impl flatbuffers::Verifiable for GameState<'_> {
@@ -687,6 +696,7 @@ impl flatbuffers::Verifiable for GameState<'_> {
     v.visit_table(pos)?
      .visit_field::<flatbuffers::ForwardsUOffset<ClientPlayer>>("client_player", Self::VT_CLIENT_PLAYER, false)?
      .visit_field::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'_, flatbuffers::ForwardsUOffset<Player>>>>("players", Self::VT_PLAYERS, false)?
+     .visit_field::<u32>("sequence", Self::VT_SEQUENCE, false)?
      .finish();
     Ok(())
   }
@@ -694,6 +704,7 @@ impl flatbuffers::Verifiable for GameState<'_> {
 pub struct GameStateArgs<'a> {
     pub client_player: Option<flatbuffers::WIPOffset<ClientPlayer<'a>>>,
     pub players: Option<flatbuffers::WIPOffset<flatbuffers::Vector<'a, flatbuffers::ForwardsUOffset<Player<'a>>>>>,
+    pub sequence: u32,
 }
 impl<'a> Default for GameStateArgs<'a> {
   #[inline]
@@ -701,6 +712,7 @@ impl<'a> Default for GameStateArgs<'a> {
     GameStateArgs {
       client_player: None,
       players: None,
+      sequence: 0,
     }
   }
 }
@@ -717,6 +729,10 @@ impl<'a: 'b, 'b, A: flatbuffers::Allocator + 'a> GameStateBuilder<'a, 'b, A> {
   #[inline]
   pub fn add_players(&mut self, players: flatbuffers::WIPOffset<flatbuffers::Vector<'b , flatbuffers::ForwardsUOffset<Player<'b >>>>) {
     self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(GameState::VT_PLAYERS, players);
+  }
+  #[inline]
+  pub fn add_sequence(&mut self, sequence: u32) {
+    self.fbb_.push_slot::<u32>(GameState::VT_SEQUENCE, sequence, 0);
   }
   #[inline]
   pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a, A>) -> GameStateBuilder<'a, 'b, A> {
@@ -738,6 +754,7 @@ impl core::fmt::Debug for GameState<'_> {
     let mut ds = f.debug_struct("GameState");
       ds.field("client_player", &self.client_player());
       ds.field("players", &self.players());
+      ds.field("sequence", &self.sequence());
       ds.finish()
   }
 }

@@ -27,6 +27,7 @@ table Player {
 table GameState {
     client_player: ClientPlayer;
     players: [Player];
+    sequence: uint32;
 }
 
 root_type GameState;

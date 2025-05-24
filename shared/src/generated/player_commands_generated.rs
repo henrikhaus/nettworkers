@@ -40,8 +40,8 @@ impl PlayerCommand {
   /// Returns the variant's name or "" if unknown.
   pub fn variant_name(self) -> Option<&'static str> {
     match self {
-      Self::MoveRight => Some("Move_right"),
-      Self::MoveLeft => Some("Move_left"),
+      Self::MoveRight => Some("MoveRight"),
+      Self::MoveLeft => Some("MoveLeft"),
       Self::Jump => Some("Jump"),
       _ => None,
     }

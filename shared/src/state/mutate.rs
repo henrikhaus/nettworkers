@@ -1,6 +1,6 @@
 use std::{
     collections::BinaryHeap,
-    time::{Duration, Instant, SystemTime, UNIX_EPOCH},
+    time::{SystemTime, UNIX_EPOCH},
 };
 
 use super::{CommandContent, GameState, PlayerState, physics::*};
@@ -49,15 +49,6 @@ impl GameState {
         for (player_id, player_state_command, client_delay_micros) in commands {
             let client_dt = (player_state_command.dt_micro / 1000) as f32;
             // Get player, add to game state if not exists
-            let player = match self.players.get_mut(player_id) {
-                Some(player) => player,
-                None => {
-                    println!("Player {} not found, creating player", player_id);
-                    let new_player = PlayerState::new(*player_id, &self.spawn_point);
-                    self.players.insert(*player_id, new_player);
-                    self.players.get_mut(player_id).unwrap()
-                }
-            };
 
             // Add commands to scheduled binary heap
             for command in &player_state_command.commands {
@@ -125,13 +116,22 @@ impl GameState {
     }
 
     fn execute_scheduled_command(&mut self, scheduled: ScheduledCommand) {
-        if let Some(player) = self.players.get_mut(&scheduled.player_id) {
-            match scheduled.command {
-                PlayerCommand::MoveRight => player.handle_move_right(scheduled.client_dt),
-                PlayerCommand::MoveLeft => player.handle_move_left(scheduled.client_dt),
-                PlayerCommand::Jump => player.handle_jump(),
-                _ => {}
+        let player_id = scheduled.player_id;
+        let player = match self.players.get_mut(&player_id) {
+            Some(player) => player,
+            None => {
+                println!("Player {} not found, creating player", player_id);
+                let new_player = PlayerState::new(player_id, &self.spawn_point);
+                self.players.insert(player_id, new_player);
+                self.players.get_mut(&player_id).unwrap()
             }
+        };
+
+        match scheduled.command {
+            PlayerCommand::MoveRight => player.handle_move_right(scheduled.client_dt),
+            PlayerCommand::MoveLeft => player.handle_move_left(scheduled.client_dt),
+            PlayerCommand::Jump => player.handle_jump(),
+            _ => {}
         }
     }
 }
