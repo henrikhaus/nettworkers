@@ -152,7 +152,7 @@ impl Client {
             // Mutate local state
             if let Some(player_state_command) = player_state_command {
                 game_state.mutate(
-                    &[(client_player_id, player_state_command.clone())],
+                    &[(client_player_id, player_state_command.clone(), 0)],
                     dt_micro,
                 );
 
@@ -243,7 +243,7 @@ impl Client {
 
 #[macroquad::main(window_conf)]
 async fn main() -> io::Result<()> {
-    let (client, command_receiver, state_receiver, player_delay_receiver) = Client::new()?;
+    let (client, command_receiver, state_receiver) = Client::new()?;
     let client_arc: Arc<Client> = Arc::new(client);
 
     client_arc
