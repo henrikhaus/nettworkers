@@ -126,9 +126,9 @@ impl GameState {
     fn execute_scheduled_command(&mut self, scheduled: ScheduledCommand) {
         if let Some(player) = self.players.get_mut(&scheduled.player_id) {
             match scheduled.command {
+                PlayerCommand::MoveRight => player.handle_move_right(scheduled.client_dt),
+                PlayerCommand::MoveLeft => player.handle_move_left(scheduled.client_dt),
                 PlayerCommand::Jump => player.handle_jump(),
-                PlayerCommand::MoveLeft => player.handle_move_right(scheduled.client_dt),
-                PlayerCommand::MoveRight => player.handle_move_left(scheduled.client_dt),
                 _ => {}
             }
         }
