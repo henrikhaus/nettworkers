@@ -1,9 +1,8 @@
-use super::{GameState, SceneObject};
-use super::{GRAVITY, GROUND_FRICTION, SCREEN_HEIGHT, SCREEN_WIDTH};
+use super::GameState;
+use super::{GRAVITY, GROUND_FRICTION};
 
 pub fn physics(state: &mut GameState, dt: f32) {
     for (_player_id, player) in &mut state.players {
-
         player.vel.x *= GROUND_FRICTION.powf(dt);
         player.vel.y += GRAVITY * dt;
         player.pos.x += player.vel.x * dt;
@@ -30,7 +29,7 @@ pub fn physics(state: &mut GameState, dt: f32) {
             player.vel.x = 0.0;
         }
     }
-    
+
     let collidables = &state.collidables;
 
     for (_id, player) in &mut state.players {
@@ -49,8 +48,16 @@ pub fn physics(state: &mut GameState, dt: f32) {
             // overlap test
             if px1 < cx2 && px2 > cx1 && py1 < cy2 && py2 > cy1 {
                 // compute penetration depths on each axis
-                let pen_x = if player.vel.x > 0.0 { px2 - cx1 } else { cx2 - px1 };
-                let pen_y = if player.vel.y > 0.0 { py2 - cy1 } else { cy2 - py1 };
+                let pen_x = if player.vel.x > 0.0 {
+                    px2 - cx1
+                } else {
+                    cx2 - px1
+                };
+                let pen_y = if player.vel.y > 0.0 {
+                    py2 - cy1
+                } else {
+                    cy2 - py1
+                };
 
                 if pen_x < pen_y {
                     // resolve in X

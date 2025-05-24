@@ -1,5 +1,5 @@
 use flatbuffers::FlatBufferBuilder;
-use shared::state::{GameState, PlayerStateCommand};
+use shared::state::{CommandContent, GameState, PlayerStateCommand};
 use std::collections::HashMap;
 use std::io;
 use std::net::{SocketAddr, UdpSocket};
@@ -7,20 +7,22 @@ use std::sync::mpsc::{self, Receiver, Sender};
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::thread::sleep;
-use std::time::{Duration, Instant};
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 const SCENE_NAME: &str = "scene_1";
-const TICK_DURATION: Duration = Duration::from_millis(16);
+const TICK_DURATION: Duration = Duration::from_millis(1000);
 const SERVER_ADDR: &str = "127.0.0.1:9000";
 
 struct Server {
-    command_sender: Sender<(u32, PlayerStateCommand)>,
+    command_sender: Sender<CommandContent>,
     ip_to_player_id: Arc<Mutex<HashMap<SocketAddr, u32>>>,
     socket: UdpSocket,
 }
 
+type NewServerResult = io::Result<(Server, Receiver<CommandContent>)>;
+
 impl Server {
-    fn new() -> io::Result<(Server, Receiver<(u32, PlayerStateCommand)>)> {
+    fn new() -> NewServerResult {
         let socket = UdpSocket::bind(SERVER_ADDR)?;
         let (command_sender, command_receiver) = mpsc::channel();
 
@@ -39,8 +41,17 @@ impl Server {
         let player_commands = PlayerStateCommand::deserialize(packet);
         let player_id = self.get_or_add_player_id(&src_addr);
 
+        let system_time_micro = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_micros() as u64;
+
+        let player_delay_ms = system_time_micro - player_commands.client_timestamp_micro;
         if !player_commands.commands.is_empty() {
-            if let Err(e) = self.command_sender.send((player_id, player_commands)) {
+            if let Err(e) = self
+                .command_sender
+                .send((player_id, player_commands, player_delay_ms))
+            {
                 eprintln!("Failed to send command: {}", e);
             }
         }
@@ -81,7 +92,7 @@ impl Server {
             .collect()
     }
 
-    fn start_tick_thread(self: Arc<Self>, command_receiver: Receiver<(u32, PlayerStateCommand)>) {
+    fn start_tick_thread(self: Arc<Self>, command_receiver: Receiver<CommandContent>) {
         println!("Starting tick thread!");
 
         let mut game_state = GameState::new(SCENE_NAME);
@@ -90,22 +101,16 @@ impl Server {
             let mut last_tick = Instant::now();
             loop {
                 let start = Instant::now();
-                let dt = start.duration_since(last_tick).as_secs_f32();
+                let dt_micros = start.duration_since(last_tick).as_micros() as u64;
                 last_tick = start;
 
                 let mut commands = Vec::new();
-                while let Ok((player_id, command)) = command_receiver.try_recv() {
-                    commands.push((player_id, command));
+                while let Ok((player_id, command, player_delay_ms)) = command_receiver.try_recv() {
+                    commands.push((player_id, command, player_delay_ms));
                 }
 
-                self.tick(&mut game_state, &commands, dt);
+                self.tick(&mut game_state, &commands, dt_micros);
                 self.broadcast_state(&game_state);
-
-                for (player_id, player) in &game_state.players {
-                    println!("Player {}", player_id);
-                    println!("{:?}", player.pos.y);
-                    println!("{:?}", player.pos.x);
-                }
 
                 let sleep_time = TICK_DURATION.checked_sub(start.elapsed());
                 if let Some(sleep_time) = sleep_time {
@@ -115,10 +120,7 @@ impl Server {
         });
     }
 
-    pub fn run(
-        self: Arc<Self>,
-        command_receiver: Receiver<(u32, PlayerStateCommand)>,
-    ) -> io::Result<()> {
+    pub fn run(self: Arc<Self>, command_receiver: Receiver<CommandContent>) -> io::Result<()> {
         Arc::clone(&self).start_tick_thread(command_receiver);
 
         // Listen for commands
@@ -131,8 +133,8 @@ impl Server {
         }
     }
 
-    fn tick(&self, game_state: &mut GameState, commands: &[(u32, PlayerStateCommand)], dt: f32) {
-        game_state.mutate(commands, dt);
+    fn tick(&self, game_state: &mut GameState, commands: &[CommandContent], dt_micros: u64) {
+        game_state.mutate(commands, dt_micros);
     }
 }
 

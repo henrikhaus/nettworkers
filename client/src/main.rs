@@ -29,7 +29,7 @@ const SCREEN_HEIGHT: f32 = 360.0;
 const SCREEN_CLAMP_DISTANCE_X: f32 = 200.0;
 const SCREEN_CLAMP_DISTANCE_Y: f32 = 400.0;
 const FONT_SIZE: f32 = 8.0;
-const DELAY_MS: u64 = 300;
+const DELAY_MILLIS: u64 = 1000;
 const SCENE_NAME: &str = "scene_1";
 
 const SCALE: f32 = 1.0;
@@ -112,7 +112,7 @@ impl Client {
         let mut sequence: u32 = 0;
 
         let mut game_state = GameState::new(SCENE_NAME);
-        let mut client_player = None;
+        let mut client_player_id = 1;
 
         let project_root = env!("CARGO_MANIFEST_DIR");
         let file = File::open(format!("{}/../scenes/{}.json", project_root, SCENE_NAME))
@@ -126,9 +126,11 @@ impl Client {
         loop {
             // Get new game state (if available)
             if let Ok((server_game_state, server_client_player)) = state_receiver.try_recv() {
-                game_state = server_game_state;
-
-                client_player = Some(server_client_player);
+                client_player_id = server_client_player.id;
+                game_state.players = server_game_state.players;
+                game_state
+                    .players
+                    .insert(server_client_player.id, server_client_player);
             }
 
             // Get accurate frame timing
@@ -142,25 +144,37 @@ impl Client {
                 .unwrap_or_default()
                 .as_micros() as u64;
 
-            // Get commands and send to network thread
+            // Get commands
             let commands = input_handler(&mut ui_state);
-            if !commands.is_empty() {
-                let player_state_command = PlayerStateCommand {
+            let player_state_command = match commands.is_empty() {
+                true => None,
+                false => Some(PlayerStateCommand {
                     sequence,
                     dt_micro,
                     commands,
                     client_timestamp_micro: unix_timestamp_micro,
-                };
+                }),
+            };
 
+            // Mutate local state
+            if let Some(player_state_command) = player_state_command {
+                game_state.mutate(
+                    &[(client_player_id, player_state_command.clone(), 0)],
+                    dt_micro,
+                );
+
+                // Send to network thread
                 if let Err(e) = self.command_sender.send(player_state_command) {
                     eprintln!("Error sending player state command: {}", e);
                 } else {
                     sequence += 1;
                 }
-            };
+            } else {
+                game_state.mutate(&[], dt_micro);
+            }
 
             // Rendering game
-            render(&game_state, &client_player, &scene);
+            render(&game_state, client_player_id, &scene);
 
             // begin UI frame
             ui.begin_frame();
@@ -193,7 +207,7 @@ impl Client {
                         continue;
                     };
 
-                    let apply_when = Instant::now() + Duration::from_millis(DELAY_MS);
+                    let apply_when = Instant::now() + Duration::from_millis(DELAY_MILLIS);
                     server_state_queue.push_back((apply_when, GameState::deserialize(&buf[..amt])));
                 };
 
@@ -218,7 +232,7 @@ impl Client {
                 // Add commands to queue
                 while let Ok(player_state_command) = command_receiver.try_recv() {
                     command_queue.push_back((
-                        Instant::now() + Duration::from_micros(DELAY_MS),
+                        Instant::now() + Duration::from_millis(DELAY_MILLIS),
                         player_state_command,
                     ));
                 }
@@ -247,7 +261,7 @@ impl Client {
 #[macroquad::main(window_conf)]
 async fn main() -> io::Result<()> {
     let (client, command_receiver, state_receiver) = Client::new()?;
-    let client_arc = Arc::new(client);
+    let client_arc: Arc<Client> = Arc::new(client);
 
     client_arc
         .clone()
@@ -275,10 +289,10 @@ fn input_handler(ui_state: &mut UiState) -> Vec<generated::PlayerCommand> {
     // --- NETWORK INPUT ---
     let mut commands = Vec::new();
     if is_key_down(KeyCode::Right) || is_key_down(KeyCode::D) {
-        commands.push(generated::PlayerCommand::Move_right);
+        commands.push(generated::PlayerCommand::MoveRight);
     }
     if is_key_down(KeyCode::Left) || is_key_down(KeyCode::A) {
-        commands.push(generated::PlayerCommand::Move_left);
+        commands.push(generated::PlayerCommand::MoveLeft);
     }
     if is_key_down(KeyCode::Up) || is_key_down(KeyCode::W) || is_key_down(KeyCode::Space) {
         commands.push(generated::PlayerCommand::Jump);
