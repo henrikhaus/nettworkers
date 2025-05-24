@@ -25,7 +25,7 @@ const SCREEN_HEIGHT: f32 = 360.0;
 const SCREEN_CLAMP_DISTANCE_X: f32 = 200.0;
 const SCREEN_CLAMP_DISTANCE_Y: f32 = 400.0;
 const FONT_SIZE: f32 = 8.0;
-const DELAY_MS: u64 = 1000;
+const DELAY_MILLIS: u64 = 0;
 const SCENE_NAME: &str = "scene_1";
 
 const SCALE: f32 = 1.0;
@@ -190,7 +190,7 @@ impl Client {
                         continue;
                     };
 
-                    let apply_when = Instant::now() + Duration::from_millis(DELAY_MS);
+                    let apply_when = Instant::now() + Duration::from_millis(DELAY_MILLIS);
                     server_state_queue.push_back((apply_when, GameState::deserialize(&buf[..amt])));
                 };
 
@@ -215,7 +215,7 @@ impl Client {
                 // Add commands to queue
                 while let Ok(player_state_command) = command_receiver.try_recv() {
                     command_queue.push_back((
-                        Instant::now() + Duration::from_micros(DELAY_MS),
+                        Instant::now() + Duration::from_millis(DELAY_MILLIS),
                         player_state_command,
                     ));
                 }

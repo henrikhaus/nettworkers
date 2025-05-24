@@ -7,10 +7,10 @@ use std::sync::mpsc::{self, Receiver, Sender};
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::thread::sleep;
-use std::time::{Duration, Instant};
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 const SCENE_NAME: &str = "scene_1";
-const TICK_DURATION: Duration = Duration::from_millis(16);
+const TICK_DURATION: Duration = Duration::from_millis(1000);
 const SERVER_ADDR: &str = "127.0.0.1:9000";
 
 struct Server {
@@ -41,8 +41,17 @@ impl Server {
         let player_commands = PlayerStateCommand::deserialize(packet);
         let player_id = self.get_or_add_player_id(&src_addr);
 
-        let player_delay_ms: u64 = 300000;
+        let system_time_micro = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_micros() as u64;
+
+        let player_delay_ms = system_time_micro - player_commands.client_timestamp_micro;
         if !player_commands.commands.is_empty() {
+            println!(
+                "Received commands from player {} with delay {}ms",
+                player_id, player_delay_ms
+            );
             if let Err(e) = self
                 .command_sender
                 .send((player_id, player_commands, player_delay_ms))
