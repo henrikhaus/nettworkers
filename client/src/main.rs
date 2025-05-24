@@ -25,7 +25,7 @@ const SCREEN_HEIGHT: f32 = 360.0;
 const SCREEN_CLAMP_DISTANCE_X: f32 = 200.0;
 const SCREEN_CLAMP_DISTANCE_Y: f32 = 400.0;
 const FONT_SIZE: f32 = 8.0;
-const DELAY_MILLIS: u64 = 0;
+const DELAY_MILLIS: u64 = 1000;
 const SCENE_NAME: &str = "scene_1";
 
 const SCALE: f32 = 1.0;

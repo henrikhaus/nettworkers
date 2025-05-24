@@ -48,10 +48,6 @@ impl Server {
 
         let player_delay_ms = system_time_micro - player_commands.client_timestamp_micro;
         if !player_commands.commands.is_empty() {
-            println!(
-                "Received commands from player {} with delay {}ms",
-                player_id, player_delay_ms
-            );
             if let Err(e) = self
                 .command_sender
                 .send((player_id, player_commands, player_delay_ms))
@@ -115,12 +111,6 @@ impl Server {
 
                 self.tick(&mut game_state, &commands, dt_micros);
                 self.broadcast_state(&game_state);
-
-                for (player_id, player) in &game_state.players {
-                    println!("Player {}", player_id);
-                    println!("{:?}", player.pos.y);
-                    println!("{:?}", player.pos.x);
-                }
 
                 let sleep_time = TICK_DURATION.checked_sub(start.elapsed());
                 if let Some(sleep_time) = sleep_time {

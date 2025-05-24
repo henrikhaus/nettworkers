@@ -46,7 +46,7 @@ impl GameState {
 
         let mut scheduled_commands = BinaryHeap::new();
 
-        for (player_id, player_state_command, client_delay) in commands {
+        for (player_id, player_state_command, client_delay_micros) in commands {
             let client_dt = (player_state_command.dt_micro / 1000) as f32;
             // Get player, add to game state if not exists
             let player = match self.players.get_mut(player_id) {
@@ -63,7 +63,7 @@ impl GameState {
             for command in &player_state_command.commands {
                 let effect = ScheduledCommand {
                     execute_at: start_tick
-                        .max(player_state_command.client_timestamp_micro + *client_delay)
+                        .max(player_state_command.client_timestamp_micro + *client_delay_micros)
                         - start_tick,
                     player_id: *player_id,
                     client_dt,
@@ -87,7 +87,7 @@ impl GameState {
             let execute_time = if step == accumulator {
                 u64::MAX
             } else {
-                accumulator
+                tick_time_micro - accumulator
             };
 
             self.execute_commands(&mut scheduled_commands, execute_time);
@@ -111,10 +111,11 @@ impl GameState {
     fn execute_commands(
         &mut self,
         scheduled_commands: &mut BinaryHeap<ScheduledCommand>,
-        accumulator: u64,
+        execute_time: u64,
     ) {
         while let Some(scheduled_command) = scheduled_commands.pop() {
-            if scheduled_command.execute_at <= accumulator {
+            if scheduled_command.execute_at <= execute_time {
+                println!("Command executed at {}", execute_time);
                 self.execute_scheduled_command(scheduled_command);
             } else {
                 scheduled_commands.push(scheduled_command);
