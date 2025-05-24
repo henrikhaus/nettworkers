@@ -16,8 +16,8 @@ pub const ENUM_MAX_PLAYER_COMMAND: u8 = 2;
 #[deprecated(since = "2.0.0", note = "Use associated constants instead. This will no longer be generated in 2021.")]
 #[allow(non_camel_case_types)]
 pub const ENUM_VALUES_PLAYER_COMMAND: [PlayerCommand; 3] = [
-  PlayerCommand::Move_right,
-  PlayerCommand::Move_left,
+  PlayerCommand::MoveRight,
+  PlayerCommand::MoveLeft,
   PlayerCommand::Jump,
 ];
 
@@ -26,22 +26,22 @@ pub const ENUM_VALUES_PLAYER_COMMAND: [PlayerCommand; 3] = [
 pub struct PlayerCommand(pub u8);
 #[allow(non_upper_case_globals)]
 impl PlayerCommand {
-  pub const Move_right: Self = Self(0);
-  pub const Move_left: Self = Self(1);
+  pub const MoveRight: Self = Self(0);
+  pub const MoveLeft: Self = Self(1);
   pub const Jump: Self = Self(2);
 
   pub const ENUM_MIN: u8 = 0;
   pub const ENUM_MAX: u8 = 2;
   pub const ENUM_VALUES: &'static [Self] = &[
-    Self::Move_right,
-    Self::Move_left,
+    Self::MoveRight,
+    Self::MoveLeft,
     Self::Jump,
   ];
   /// Returns the variant's name or "" if unknown.
   pub fn variant_name(self) -> Option<&'static str> {
     match self {
-      Self::Move_right => Some("Move_right"),
-      Self::Move_left => Some("Move_left"),
+      Self::MoveRight => Some("Move_right"),
+      Self::MoveLeft => Some("Move_left"),
       Self::Jump => Some("Jump"),
       _ => None,
     }

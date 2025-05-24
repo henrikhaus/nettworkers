@@ -41,7 +41,7 @@ impl Server {
         let player_commands = PlayerStateCommand::deserialize(packet);
         let player_id = self.get_or_add_player_id(&src_addr);
 
-        let player_delay_ms: u64 = 0;
+        let player_delay_ms: u64 = 300000;
         if !player_commands.commands.is_empty() {
             if let Err(e) = self
                 .command_sender
@@ -87,11 +87,7 @@ impl Server {
             .collect()
     }
 
-    fn start_tick_thread(
-        self: Arc<Self>,
-        command_receiver: Receiver<CommandContent>,
-        player_delay_receiver: Receiver<u64>,
-    ) {
+    fn start_tick_thread(self: Arc<Self>, command_receiver: Receiver<CommandContent>) {
         println!("Starting tick thread!");
 
         let mut game_state = GameState::new(SCENE_NAME);
@@ -125,12 +121,8 @@ impl Server {
         });
     }
 
-    pub fn run(
-        self: Arc<Self>,
-        command_receiver: Receiver<CommandContent>,
-        player_delay_receiver: Receiver<u64>,
-    ) -> io::Result<()> {
-        Arc::clone(&self).start_tick_thread(command_receiver, player_delay_receiver);
+    pub fn run(self: Arc<Self>, command_receiver: Receiver<CommandContent>) -> io::Result<()> {
+        Arc::clone(&self).start_tick_thread(command_receiver);
 
         // Listen for commands
         let socket = self.socket.try_clone()?;
@@ -148,7 +140,7 @@ impl Server {
 }
 
 fn main() -> io::Result<()> {
-    let (server, command_receiver, player_delay_receiver) = Server::new()?;
+    let (server, command_receiver) = Server::new()?;
     let server_arc = Arc::new(server);
-    server_arc.run(command_receiver, player_delay_receiver)
+    server_arc.run(command_receiver)
 }

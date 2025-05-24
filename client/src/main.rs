@@ -256,10 +256,10 @@ async fn main() -> io::Result<()> {
 fn input_handler() -> Vec<generated::PlayerCommand> {
     let mut commands = Vec::new();
     if is_key_down(KeyCode::Right) || is_key_down(KeyCode::D) {
-        commands.push(generated::PlayerCommand::Move_right);
+        commands.push(generated::PlayerCommand::MoveRight);
     }
     if is_key_down(KeyCode::Left) || is_key_down(KeyCode::A) {
-        commands.push(generated::PlayerCommand::Move_left);
+        commands.push(generated::PlayerCommand::MoveLeft);
     }
     if is_key_down(KeyCode::Up) || is_key_down(KeyCode::W) || is_key_down(KeyCode::Space) {
         commands.push(generated::PlayerCommand::Jump);
