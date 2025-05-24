@@ -76,17 +76,20 @@ fn window_conf() -> Conf {
     }
 }
 
+struct ReconciliationCommand {
+    command: PlayerStateCommand,
+    frame_dt_micros: u64,
+}
+
 struct Client {
     socket: UdpSocket,
     command_sender: Sender<PlayerStateCommand>,
-    state_sender: Sender<(GameState, PlayerState)>,
+    state_sender: Sender<StateData>,
 }
 
-type NewClientResult = io::Result<(
-    Client,
-    Receiver<PlayerStateCommand>,
-    Receiver<(GameState, PlayerState)>,
-)>;
+type StateData = (GameState, PlayerState, u32);
+
+type NewClientResult = io::Result<(Client, Receiver<PlayerStateCommand>, Receiver<StateData>)>;
 
 impl Client {
     fn new() -> NewClientResult {
@@ -107,7 +110,7 @@ impl Client {
 
     async fn start_game_loop(
         self: Arc<Self>,
-        state_receiver: Receiver<(GameState, PlayerState)>,
+        state_receiver: Receiver<StateData>,
     ) -> io::Result<()> {
         let mut sequence: u32 = 0;
 
@@ -122,15 +125,26 @@ impl Client {
 
         let mut ui = UiContext::new();
         let mut ui_state = UiState::new();
+        let mut unconfirmed_commands: Vec<ReconciliationCommand> = Vec::new();
 
         loop {
             // Get new game state (if available)
-            if let Ok((server_game_state, server_client_player)) = state_receiver.try_recv() {
+            if let Ok((server_game_state, server_client_player, server_sequence)) =
+                state_receiver.try_recv()
+            {
+                unconfirmed_commands.retain(|c| c.command.sequence > server_sequence);
                 client_player_id = server_client_player.id;
                 game_state.players = server_game_state.players;
                 game_state
                     .players
                     .insert(server_client_player.id, server_client_player);
+
+                // reconciliation
+                for reconciliation_command in &unconfirmed_commands {
+                    let command = reconciliation_command.command.clone();
+                    let dt_micros = reconciliation_command.frame_dt_micros;
+                    game_state.mutate(&[(client_player_id, command, 0)], dt_micros);
+                }
             }
 
             // Get accurate frame timing
@@ -158,6 +172,10 @@ impl Client {
 
             // Mutate local state
             if let Some(player_state_command) = player_state_command {
+                unconfirmed_commands.push(ReconciliationCommand {
+                    command: player_state_command.clone(),
+                    frame_dt_micros: dt_micro,
+                });
                 game_state.mutate(
                     &[(client_player_id, player_state_command.clone(), 0)],
                     dt_micro,

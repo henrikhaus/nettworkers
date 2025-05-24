@@ -36,13 +36,13 @@ impl Ord for ScheduledCommand {
 }
 
 impl GameState {
-    pub fn mutate(&mut self, commands: &[CommandContent], tick_time_micro: u64) {
+    pub fn mutate(&mut self, commands: &[CommandContent], dt_micros: u64) {
         let end_tick = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .unwrap_or_default()
             .as_micros() as u64;
 
-        let start_tick = end_tick - tick_time_micro;
+        let start_tick = end_tick - dt_micros;
 
         let mut scheduled_commands = BinaryHeap::new();
 
@@ -69,7 +69,7 @@ impl GameState {
         }
 
         // Physics
-        let mut accumulator = tick_time_micro;
+        let mut accumulator = dt_micros;
         let fixed_dt = 16000; // 16 ms
 
         while accumulator > 0 {
@@ -78,7 +78,7 @@ impl GameState {
             let execute_time = if step == accumulator {
                 u64::MAX
             } else {
-                tick_time_micro - accumulator
+                dt_micros - accumulator
             };
 
             self.execute_commands(&mut scheduled_commands, execute_time);
@@ -106,7 +106,6 @@ impl GameState {
     ) {
         while let Some(scheduled_command) = scheduled_commands.pop() {
             if scheduled_command.execute_at <= execute_time {
-                println!("Command executed at {}", execute_time);
                 self.execute_scheduled_command(scheduled_command);
             } else {
                 scheduled_commands.push(scheduled_command);
