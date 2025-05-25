@@ -1,4 +1,5 @@
 use flatbuffers::FlatBufferBuilder;
+use shared::generated::{PlayerCommand, PlayerCommands, PlayerCommandsArgs};
 use shared::state::{CommandContent, GameState, PlayerStateCommand};
 use std::collections::HashMap;
 use std::io;
@@ -23,10 +24,14 @@ type NewServerResult = io::Result<(Server, Receiver<CommandContent>)>;
 
 impl Server {
     fn new() -> NewServerResult {
-        let socket = UdpSocket::bind(SERVER_ADDR)?;
+        Self::with_addr(SERVER_ADDR)
+    }
+
+    fn with_addr(addr: &str) -> NewServerResult {
+        let socket = UdpSocket::bind(addr)?;
         let (command_sender, command_receiver) = mpsc::channel();
 
-        println!("UDP running on {}...", SERVER_ADDR);
+        println!("UDP running on {}...", addr);
         Ok((
             Server {
                 command_sender,
@@ -144,4 +149,85 @@ fn main() -> io::Result<()> {
     let (server, command_receiver) = Server::new()?;
     let server_arc = Arc::new(server);
     server_arc.run(command_receiver)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::net::UdpSocket;
+    use std::time::Duration;
+
+    const TEST_SERVER_PORT_START: u16 = 9100;
+    static mut NEXT_TEST_PORT: u16 = TEST_SERVER_PORT_START;
+
+    fn get_test_server_addr() -> String {
+        // This is safe because tests run sequentially in a single thread
+        unsafe {
+            let port = NEXT_TEST_PORT;
+            NEXT_TEST_PORT += 1;
+            format!("127.0.0.1:{}", port)
+        }
+    }
+
+    #[test]
+    fn test_server_creation() {
+        let addr = get_test_server_addr();
+        let (server, _receiver) = Server::with_addr(&addr).expect("Server should be created");
+        assert_eq!(server.socket.local_addr().unwrap().to_string(), addr);
+    }
+
+    #[test]
+    fn test_player_id_assignment() {
+        let addr = get_test_server_addr();
+        let (server, _receiver) = Server::with_addr(&addr).expect("Server should be created");
+        let addr1 = "127.0.0.1:8001".parse().unwrap();
+        let addr2 = "127.0.0.1:8002".parse().unwrap();
+
+        let id1 = server.get_or_add_player_id(&addr1);
+        let id2 = server.get_or_add_player_id(&addr2);
+        let id1_again = server.get_or_add_player_id(&addr1);
+
+        assert_eq!(id1, 1); // First player gets ID 1
+        assert_eq!(id2, 2); // Second player gets ID 2
+        assert_eq!(id1_again, id1); // Same player gets same ID
+    }
+
+    #[test]
+    fn test_handle_packet() {
+        let addr = get_test_server_addr();
+        let (server, receiver) = Server::with_addr(&addr).expect("Server should be created");
+        let client_addr = "127.0.0.1:8001".parse().unwrap();
+
+        // Create a test packet
+        let mut builder = FlatBufferBuilder::new();
+        let commands = vec![PlayerCommand::MoveRight];
+        let commands_vec = builder.create_vector(&commands);
+        let player_commands = PlayerCommands::create(
+            &mut builder,
+            &PlayerCommandsArgs {
+                sequence: 1,
+                dt_micro: 16667, // ~60fps
+                commands: Some(commands_vec),
+                client_timestamp_micro: SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_micros() as u64,
+            },
+        );
+        builder.finish(player_commands, None);
+        let packet = builder.finished_data();
+
+        // Handle the packet
+        server.handle_packet(packet, client_addr);
+
+        // Check if command was received
+        let (player_id, received_commands, _) = receiver
+            .recv_timeout(Duration::from_secs(1))
+            .expect("Should receive command");
+
+        assert_eq!(player_id, 1); // First player gets ID 1
+        assert_eq!(received_commands.sequence, 1);
+        assert_eq!(received_commands.commands.len(), 1);
+        assert_eq!(received_commands.commands[0], PlayerCommand::MoveRight);
+    }
 }
