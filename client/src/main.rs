@@ -1,5 +1,6 @@
 mod game_logic;
 mod interpolator;
+mod predictor;
 mod render;
 mod ui;
 
@@ -7,10 +8,10 @@ use flatbuffers::FlatBufferBuilder;
 use interpolator::Interpolator;
 use macroquad::math::f32;
 use macroquad::prelude::*;
+use predictor::Predictor;
 use serde::Deserialize;
 use shared::generated;
 use shared::state;
-use shared::state::CommandContent;
 use state::{GameState, PlayerState, PlayerStateCommand};
 use std::collections::{HashMap, VecDeque};
 use std::fs::File;
@@ -80,12 +81,6 @@ fn window_conf() -> Conf {
     }
 }
 
-struct ReconciliationCommand {
-    command: Option<CommandContent>,
-    frame_dt_micros: u64,
-    sequence: u32,
-}
-
 struct Client {
     socket: UdpSocket,
     command_sender: Sender<PlayerStateCommand>,
@@ -121,8 +116,7 @@ impl Client {
 
         // Prediction + reconciliation
         let mut game_state = GameState::new(SCENE_NAME);
-        let mut unconfirmed_state: Vec<ReconciliationCommand> = Vec::new();
-        let mut sequence: u32 = 0;
+        let mut predictor = Predictor::new();
 
         // Interpolation
         let mut interpolator = Interpolator::new(&game_state);
@@ -144,7 +138,6 @@ impl Client {
             {
                 interpolator.set_new_state(server_game_state.clone());
 
-                unconfirmed_state.retain(|c| c.sequence > server_sequence);
                 client_player_id = server_client_player.id;
                 game_state.players = server_game_state.players;
                 game_state
@@ -152,20 +145,12 @@ impl Client {
                     .insert(server_client_player.id, server_client_player);
 
                 // reconciliation
-                for reconciliation_frame in &unconfirmed_state {
-                    let dt_micros = reconciliation_frame.frame_dt_micros;
-
-                    if let Some(command) = &reconciliation_frame.command {
-                        game_state.mutate(&[command.clone()], dt_micros);
-                    } else {
-                        game_state.mutate(&[], dt_micros);
-                    };
-                }
+                predictor.reconciliation(&mut game_state, server_sequence);
             }
 
             // Get accurate frame timing
             let now = Instant::now();
-            let dt_micro = now.duration_since(last_frame).as_micros() as u64;
+            let dt_micros = now.duration_since(last_frame).as_micros() as u64;
             last_frame = now;
 
             // Get Unix epoch timestamp (absolute time)
@@ -179,38 +164,26 @@ impl Client {
             let player_state_command = match commands.is_empty() {
                 true => None,
                 false => Some(PlayerStateCommand {
-                    sequence,
-                    dt_micro,
+                    sequence: predictor.sequence,
+                    dt_micro: dt_micros,
                     commands,
                     client_timestamp_micro: unix_timestamp_micro,
                 }),
             };
 
             // Mutate local state
-            if let Some(player_state_command) = player_state_command {
-                game_state.mutate(
-                    &[(client_player_id, player_state_command.clone(), 0)],
-                    dt_micro,
-                );
-                unconfirmed_state.push(ReconciliationCommand {
-                    command: Some((client_player_id, player_state_command.clone(), 0)),
-                    frame_dt_micros: dt_micro,
-                    sequence,
-                });
+            predictor.predict(
+                &mut game_state,
+                client_player_id,
+                player_state_command.as_ref(),
+                dt_micros,
+            );
 
-                // Send to network thread
+            // Send command to network thread if exists
+            if let Some(player_state_command) = player_state_command {
                 if let Err(e) = self.command_sender.send(player_state_command) {
                     eprintln!("Error sending player state command: {}", e);
-                } else {
-                    sequence += 1;
                 }
-            } else {
-                game_state.mutate(&[], dt_micro);
-                unconfirmed_state.push(ReconciliationCommand {
-                    command: None,
-                    frame_dt_micros: dt_micro,
-                    sequence,
-                });
             }
 
             // Interpolation
