@@ -8,6 +8,7 @@ pub struct Interpolator {
     received_new_state_at: Instant,
     interpolation_time: Duration,
     t: f32,
+    pub active: bool,
 }
 
 impl Interpolator {
@@ -18,6 +19,7 @@ impl Interpolator {
             received_new_state_at: Instant::now(),
             interpolation_time: Duration::ZERO,
             t: 0.0,
+            active: true,
         }
     }
 
@@ -29,6 +31,10 @@ impl Interpolator {
     }
 
     pub fn interpolate(&mut self, game_state: &mut GameState, client_player_id: u32) {
+        if !self.active {
+            return;
+        }
+
         self.update_t();
         for player in game_state.players.values_mut() {
             if player.id == client_player_id {
