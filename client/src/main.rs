@@ -22,7 +22,7 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use std::{io, thread};
 use ui::screens::settings_menu;
 
-use crate::game_logic::{Screen, UiState};
+use crate::game_logic::{Screen, SettingsState, UiState};
 use crate::render::render;
 use crate::ui::{UiContext, pause_menu, screens::hud, screens::main_menu};
 
@@ -85,26 +85,35 @@ struct Client {
     socket: UdpSocket,
     command_sender: Sender<PlayerStateCommand>,
     state_sender: Sender<StateData>,
+    settings_sender: Sender<SettingsState>,
 }
 
 type StateData = (GameState, PlayerState, u32);
 
-type NewClientResult = io::Result<(Client, Receiver<PlayerStateCommand>, Receiver<StateData>)>;
+type NewClientResult = io::Result<(
+    Client,
+    Receiver<PlayerStateCommand>,
+    Receiver<StateData>,
+    Receiver<SettingsState>,
+)>;
 
 impl Client {
     fn new() -> NewClientResult {
         let socket = UdpSocket::bind(CLIENT_ADDR)?;
         let (command_sender, command_receiver) = mpsc::channel();
         let (state_sender, state_receiver) = mpsc::channel();
+        let (settings_sender, settings_receiver) = mpsc::channel();
 
         Ok((
             Client {
                 socket,
                 command_sender,
                 state_sender,
+                settings_sender,
             },
             command_receiver,
             state_receiver,
+            settings_receiver,
         ))
     }
 
@@ -119,6 +128,7 @@ impl Client {
         let mut predictor = Predictor::new();
 
         // Interpolation
+
         let mut interpolator = Interpolator::new(&game_state);
 
         // Loading game scene
@@ -130,6 +140,7 @@ impl Client {
 
         let mut ui = UiContext::new();
         let mut ui_state = UiState::new();
+        let mut delay_enabled = true;
 
         loop {
             // Get new game state (if available)
@@ -194,12 +205,32 @@ impl Client {
 
             // begin UI frame
             ui.begin_frame();
+
             match ui_state.current_screen() {
                 Screen::MainMenu => main_menu(&mut ui, &mut ui_state),
                 Screen::InGame => hud(&mut ui, &mut ui_state, &game_state, &scene),
                 Screen::PauseMenu => pause_menu(&mut ui, &mut ui_state),
-                Screen::Settings => settings_menu(&mut ui, &mut ui_state),
-                _ => {}
+                Screen::Settings => settings_menu(
+                    &mut ui,
+                    &mut ui_state,
+                    delay_enabled,
+                    predictor.active_reconciliation,
+                    predictor.active_prediction,
+                    || {
+                        delay_enabled = !delay_enabled;
+                        self.settings_sender
+                            .send(SettingsState {
+                                delay: if delay_enabled { 1000 } else { 0 },
+                            })
+                            .unwrap();
+                    },
+                    || {
+                        predictor.active_reconciliation = !predictor.active_reconciliation;
+                    },
+                    || {
+                        predictor.active_prediction = !predictor.active_prediction;
+                    },
+                ),
             }
             ui.end_frame();
 
@@ -210,21 +241,27 @@ impl Client {
     fn start_network_thread(
         self: Arc<Client>,
         command_receiver: Receiver<PlayerStateCommand>,
+        settings_receiver: Receiver<SettingsState>,
     ) -> io::Result<thread::JoinHandle<()>> {
         self.socket.set_nonblocking(true)?;
 
         let mut server_state_queue = VecDeque::new();
         let mut command_queue = VecDeque::new();
+        let mut delay = DELAY_MILLIS;
 
         Ok(thread::spawn(move || {
             let mut buf = [0u8; 2048];
             loop {
+                while let Ok(new_settings) = settings_receiver.try_recv() {
+                    delay = new_settings.delay;
+                }
+
                 if let Ok((amt, src_addr)) = self.socket.recv_from(&mut buf) {
                     if src_addr.to_string() != SERVER_ADDR {
                         continue;
                     };
 
-                    let apply_when = Instant::now() + Duration::from_millis(DELAY_MILLIS);
+                    let apply_when = Instant::now() + Duration::from_millis(delay);
                     server_state_queue.push_back((apply_when, GameState::deserialize(&buf[..amt])));
                 };
 
@@ -249,7 +286,7 @@ impl Client {
                 // Add commands to queue
                 while let Ok(player_state_command) = command_receiver.try_recv() {
                     command_queue.push_back((
-                        Instant::now() + Duration::from_millis(DELAY_MILLIS),
+                        Instant::now() + Duration::from_millis(delay),
                         player_state_command,
                     ));
                 }
@@ -277,12 +314,12 @@ impl Client {
 
 #[macroquad::main(window_conf)]
 async fn main() -> io::Result<()> {
-    let (client, command_receiver, state_receiver) = Client::new()?;
+    let (client, command_receiver, state_receiver, settings_receiver) = Client::new()?;
     let client_arc: Arc<Client> = Arc::new(client);
 
     client_arc
         .clone()
-        .start_network_thread(command_receiver)
+        .start_network_thread(command_receiver, settings_receiver)
         .expect("Failed to start network thread");
     client_arc.clone().start_game_loop(state_receiver).await
 }
