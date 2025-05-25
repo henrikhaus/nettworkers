@@ -35,10 +35,10 @@ fn test_client_server_communication() {
                     spawn_point: SpawnPoint { x: 100.0, y: 100.0 },
                 };
 
-                // Add a test player
-                let player = PlayerState {
+                // Add a client player (id: 1)
+                let client_player = PlayerState {
                     id: 1,
-                    name: "test_player".to_string(),
+                    name: "client_player".to_string(),
                     pos: Vec2::new(100.0, 100.0),
                     vel: Vec2::new(0.0, 0.0),
                     grounded: true,
@@ -46,7 +46,21 @@ fn test_client_server_communication() {
                     color: shared::generated::Color::Red,
                     size: 32.0,
                 };
-                game_state.players.insert(1, player);
+
+                // Add another player (id: 2) that should appear in the players list
+                let other_player = PlayerState {
+                    id: 2,
+                    name: "other_player".to_string(),
+                    pos: Vec2::new(200.0, 200.0),
+                    vel: Vec2::new(0.0, 0.0),
+                    grounded: true,
+                    jump_timer: 0.0,
+                    color: shared::generated::Color::Blue,
+                    size: 32.0,
+                };
+
+                game_state.players.insert(1, client_player);
+                game_state.players.insert(2, other_player);
                 println!(
                     "Created game state with {} players",
                     game_state.players.len()
@@ -119,9 +133,13 @@ fn test_client_server_communication() {
                 client_player.id,
                 sequence
             );
+
+            // Verify we got both the client player and other player
+            assert_eq!(client_player.id, 1, "Client player should have id 1");
+            assert_eq!(game_state.players.len(), 1, "Should have 1 other player");
             assert!(
-                !game_state.players.is_empty(),
-                "Should receive game state with players"
+                game_state.players.contains_key(&2),
+                "Other player should have id 2"
             );
         }
         Err(e) => {
