@@ -8,7 +8,8 @@ pub struct ReconciliationCommand {
 
 pub struct Predictor {
     unconfirmed_frames: Vec<ReconciliationCommand>,
-    active: bool,
+    pub active_prediction: bool,
+    pub active_reconciliation: bool,
     pub sequence: u32,
 }
 
@@ -16,7 +17,8 @@ impl Predictor {
     pub fn new() -> Self {
         Predictor {
             unconfirmed_frames: Vec::new(),
-            active: true,
+            active_prediction: true,
+            active_reconciliation: true,
             sequence: 0,
         }
     }
@@ -28,7 +30,7 @@ impl Predictor {
         player_state_command: Option<&PlayerStateCommand>,
         dt_micros: u64,
     ) {
-        if !self.active {
+        if !self.active_prediction {
             return;
         }
 
@@ -50,7 +52,7 @@ impl Predictor {
     }
 
     pub fn reconciliation(&mut self, game_state: &mut GameState, server_sequence: u32) {
-        if !self.active {
+        if !self.active_reconciliation {
             return;
         }
 
