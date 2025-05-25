@@ -7,6 +7,7 @@ use serde::Deserialize;
 use std::collections::HashMap;
 use std::fmt::Display;
 use std::fs::File;
+use std::ops::{Add, Mul, Sub};
 
 // Settings
 pub const SCREEN_HEIGHT: usize = 360;
@@ -38,8 +39,40 @@ impl Vec2 {
     pub fn new(x: f32, y: f32) -> Self {
         Vec2 { x, y }
     }
-    pub fn zero() -> Vec2 {
-        Vec2 { x: 0.0, y: 0.0 }
+
+    pub const ZERO: Vec2 = Vec2 { x: 0.0, y: 0.0 };
+}
+
+impl Sub for Vec2 {
+    type Output = Vec2;
+
+    fn sub(self, other: Vec2) -> Vec2 {
+        Vec2 {
+            x: self.x - other.x,
+            y: self.y - other.y,
+        }
+    }
+}
+
+impl Add for Vec2 {
+    type Output = Vec2;
+
+    fn add(self, other: Vec2) -> Vec2 {
+        Vec2 {
+            x: self.x + other.x,
+            y: self.y + other.y,
+        }
+    }
+}
+
+impl Mul<f32> for Vec2 {
+    type Output = Vec2;
+
+    fn mul(self, other: f32) -> Vec2 {
+        Vec2 {
+            x: self.x * other,
+            y: self.y * other,
+        }
     }
 }
 
@@ -83,7 +116,7 @@ impl PlayerState {
             id,
             name: "player".to_string(),
             pos: Vec2::new(spawn_point.x, spawn_point.y),
-            vel: Vec2::zero(),
+            vel: Vec2::ZERO,
             grounded: false,
             jump_timer: 0.0,
             color: Color::Red,

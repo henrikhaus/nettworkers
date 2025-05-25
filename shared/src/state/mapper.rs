@@ -52,7 +52,7 @@ impl GameState {
                         id: p.id(),
                         name: p.name().unwrap().to_string(),
                         pos: p.pos().unwrap().to_owned().into(),
-                        vel: Vec2::zero(),
+                        vel: Vec2::ZERO,
                         grounded: false,
                         jump_timer: 0.,
                         color: p.color(),
