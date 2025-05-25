@@ -1,13 +1,13 @@
 use shared::state::{CommandContent, GameState, PlayerStateCommand};
 
-pub struct ReconciliationCommand {
+pub struct ReconciliationFrame {
     command: Option<CommandContent>,
     frame_dt_micros: u64,
     sequence: u32,
 }
 
 pub struct Predictor {
-    unconfirmed_frames: Vec<ReconciliationCommand>,
+    unconfirmed_frames: Vec<ReconciliationFrame>,
     pub active_prediction: bool,
     pub active_reconciliation: bool,
     pub sequence: u32,
@@ -42,7 +42,7 @@ impl Predictor {
             game_state.mutate(&[], dt_micros);
         }
 
-        self.unconfirmed_frames.push(ReconciliationCommand {
+        self.unconfirmed_frames.push(ReconciliationFrame {
             command: command_content,
             frame_dt_micros: dt_micros,
             sequence: self.sequence,
