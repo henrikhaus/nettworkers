@@ -114,11 +114,20 @@ impl Client {
         self: Arc<Self>,
         state_receiver: Receiver<StateData>,
     ) -> io::Result<()> {
-        let mut sequence: u32 = 0;
-
-        let mut game_state = GameState::new(SCENE_NAME);
         let mut client_player_id = 1;
 
+        // Prediction + reconciliation
+        let mut game_state = GameState::new(SCENE_NAME);
+        let mut unconfirmed_state: Vec<ReconciliationCommand> = Vec::new();
+        let mut sequence: u32 = 0;
+
+        // Interpolation
+        let mut old_server_state = game_state.clone();
+        let mut new_server_state = game_state.clone();
+        let mut received_new_state_at = Instant::now();
+        let mut interpolation_time = Duration::ZERO;
+
+        // Loading game scene
         let project_root = env!("CARGO_MANIFEST_DIR");
         let file = File::open(format!("{}/../scenes/{}.json", project_root, SCENE_NAME))
             .expect("Scene file must open");
@@ -127,7 +136,6 @@ impl Client {
 
         let mut ui = UiContext::new();
         let mut ui_state = UiState::new();
-        let mut unconfirmed_state: Vec<ReconciliationCommand> = Vec::new();
 
         loop {
             // Get new game state (if available)
@@ -202,6 +210,9 @@ impl Client {
                     sequence,
                 });
             }
+
+            // Interpolation
+            interpolate(&mut game_state, client_player_id);
 
             // Rendering game
             render(&game_state, client_player_id, &scene);
@@ -285,6 +296,32 @@ impl Client {
                 }
             }
         }))
+    }
+}
+
+struct Interpolator {
+    old_server_state: GameState,
+    new_server_state: GameState,
+    received_new_state_at: Instant,
+    interpolation_time: Duration,
+}
+
+impl Interpolator {
+    fn new(game_state: &GameState) -> Self {
+        Self {
+            old_server_state: game_state.clone(),
+            new_server_state: game_state.clone(),
+            received_new_state_at: Instant::now(),
+            interpolation_time: Duration::ZERO,
+        }
+    }
+
+    fn interpolate(game_state: &mut GameState, client_player_id: u32) {
+        for player in game_state.players.values_mut() {
+            if player.id == client_player_id {
+                continue;
+            }
+        }
     }
 }
 
