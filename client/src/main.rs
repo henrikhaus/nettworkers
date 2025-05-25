@@ -123,10 +123,7 @@ impl Client {
         let mut sequence: u32 = 0;
 
         // Interpolation
-        let mut old_server_state = game_state.clone();
-        let mut new_server_state = game_state.clone();
-        let mut received_new_state_at = Instant::now();
-        let mut interpolation_time = Duration::ZERO;
+        let mut interpolator = Interpolator::new(&game_state);
 
         // Loading game scene
         let project_root = env!("CARGO_MANIFEST_DIR");
@@ -143,6 +140,8 @@ impl Client {
             if let Ok((server_game_state, server_client_player, server_sequence)) =
                 state_receiver.try_recv()
             {
+                interpolator.set_new_state(server_game_state.clone());
+
                 unconfirmed_state.retain(|c| c.sequence > server_sequence);
                 client_player_id = server_client_player.id;
                 game_state.players = server_game_state.players;
@@ -213,7 +212,7 @@ impl Client {
             }
 
             // Interpolation
-            interpolate(&mut game_state, client_player_id);
+            interpolator.interpolate(&mut game_state, client_player_id);
 
             // Rendering game
             render(&game_state, client_player_id, &scene);
