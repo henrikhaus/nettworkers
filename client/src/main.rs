@@ -7,6 +7,7 @@ use shared::state;
 use shared::state::CommandContent;
 use state::{GameState, PlayerState, PlayerStateCommand};
 use std::collections::{HashMap, VecDeque};
+use std::env::args;
 use std::fs::File;
 use std::net::UdpSocket;
 use std::sync::Arc;
@@ -114,11 +115,17 @@ impl Client {
         self: Arc<Self>,
         state_receiver: Receiver<StateData>,
     ) -> io::Result<()> {
-        let mut sequence: u32 = 0;
-
-        let mut game_state = GameState::new(SCENE_NAME);
         let mut client_player_id = 1;
 
+        // Prediction + reconciliation
+        let mut game_state = GameState::new(SCENE_NAME);
+        let mut unconfirmed_state: Vec<ReconciliationCommand> = Vec::new();
+        let mut sequence: u32 = 0;
+
+        // Interpolation
+        let mut interpolator = Interpolator::new(&game_state);
+
+        // Loading game scene
         let project_root = env!("CARGO_MANIFEST_DIR");
         let file = File::open(format!("{}/../scenes/{}.json", project_root, SCENE_NAME))
             .expect("Scene file must open");
@@ -127,13 +134,14 @@ impl Client {
 
         let mut ui = UiContext::new();
         let mut ui_state = UiState::new();
-        let mut unconfirmed_state: Vec<ReconciliationCommand> = Vec::new();
 
         loop {
             // Get new game state (if available)
             if let Ok((server_game_state, server_client_player, server_sequence)) =
                 state_receiver.try_recv()
             {
+                interpolator.set_new_state(server_game_state.clone());
+
                 unconfirmed_state.retain(|c| c.sequence > server_sequence);
                 client_player_id = server_client_player.id;
                 game_state.players = server_game_state.players;
@@ -202,6 +210,9 @@ impl Client {
                     sequence,
                 });
             }
+
+            // Interpolation
+            interpolator.interpolate(&mut game_state, client_player_id);
 
             // Rendering game
             render(&game_state, client_player_id, &scene);
@@ -285,6 +296,64 @@ impl Client {
                 }
             }
         }))
+    }
+}
+
+struct Interpolator {
+    old_server_state: GameState,
+    new_server_state: GameState,
+    received_new_state_at: Instant,
+    interpolation_time: Duration,
+    t: f32,
+}
+
+impl Interpolator {
+    fn new(game_state: &GameState) -> Self {
+        Self {
+            old_server_state: game_state.clone(),
+            new_server_state: game_state.clone(),
+            received_new_state_at: Instant::now(),
+            interpolation_time: Duration::ZERO,
+            t: 0.0,
+        }
+    }
+
+    fn set_new_state(&mut self, new_state: GameState) {
+        self.old_server_state = self.new_server_state.clone();
+        self.new_server_state = new_state;
+        self.interpolation_time = Instant::now().duration_since(self.received_new_state_at);
+        self.received_new_state_at = Instant::now();
+    }
+
+    fn interpolate(&mut self, game_state: &mut GameState, client_player_id: u32) {
+        self.update_t();
+        for player in game_state.players.values_mut() {
+            if player.id == client_player_id {
+                continue;
+            }
+
+            let old_position = self
+                .old_server_state
+                .players
+                .get(&player.id)
+                .map_or(state::Vec2::ZERO, |p| p.pos);
+            let new_position = self
+                .new_server_state
+                .players
+                .get(&player.id)
+                .map_or(state::Vec2::ZERO, |p| p.pos);
+
+            player.pos = self.lerp_position(old_position, new_position);
+        }
+    }
+
+    fn update_t(&mut self) {
+        self.t = self.received_new_state_at.elapsed().as_millis() as f32
+            / self.interpolation_time.as_millis() as f32;
+    }
+
+    fn lerp_position(&self, start: state::Vec2, end: state::Vec2) -> state::Vec2 {
+        start + (end - start) * self.t
     }
 }
 
