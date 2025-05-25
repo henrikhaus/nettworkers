@@ -12,13 +12,14 @@ use self::flatbuffers::{EndianScalar, Follow};
 #[deprecated(since = "2.0.0", note = "Use associated constants instead. This will no longer be generated in 2021.")]
 pub const ENUM_MIN_PLAYER_COMMAND: u8 = 0;
 #[deprecated(since = "2.0.0", note = "Use associated constants instead. This will no longer be generated in 2021.")]
-pub const ENUM_MAX_PLAYER_COMMAND: u8 = 2;
+pub const ENUM_MAX_PLAYER_COMMAND: u8 = 3;
 #[deprecated(since = "2.0.0", note = "Use associated constants instead. This will no longer be generated in 2021.")]
 #[allow(non_camel_case_types)]
-pub const ENUM_VALUES_PLAYER_COMMAND: [PlayerCommand; 3] = [
+pub const ENUM_VALUES_PLAYER_COMMAND: [PlayerCommand; 4] = [
   PlayerCommand::MoveRight,
   PlayerCommand::MoveLeft,
   PlayerCommand::Jump,
+  PlayerCommand::Disconnect,
 ];
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
@@ -29,13 +30,15 @@ impl PlayerCommand {
   pub const MoveRight: Self = Self(0);
   pub const MoveLeft: Self = Self(1);
   pub const Jump: Self = Self(2);
+  pub const Disconnect: Self = Self(3);
 
   pub const ENUM_MIN: u8 = 0;
-  pub const ENUM_MAX: u8 = 2;
+  pub const ENUM_MAX: u8 = 3;
   pub const ENUM_VALUES: &'static [Self] = &[
     Self::MoveRight,
     Self::MoveLeft,
     Self::Jump,
+    Self::Disconnect,
   ];
   /// Returns the variant's name or "" if unknown.
   pub fn variant_name(self) -> Option<&'static str> {
@@ -43,6 +46,7 @@ impl PlayerCommand {
       Self::MoveRight => Some("MoveRight"),
       Self::MoveLeft => Some("MoveLeft"),
       Self::Jump => Some("Jump"),
+      Self::Disconnect => Some("Disconnect"),
       _ => None,
     }
   }

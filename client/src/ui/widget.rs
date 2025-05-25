@@ -1,6 +1,9 @@
 use crate::ui::context::DrawCmd;
 use crate::ui::context::UiContext;
-use macroquad::math::{Rect, Vec2};
+use macroquad::input::{KeyCode, get_char_pressed, is_key_down, is_key_pressed};
+use macroquad::math::{Rect, Vec2, vec2};
+use macroquad::text::measure_text;
+use macroquad::time::get_time;
 
 /// Response from widget interaction
 #[derive(Debug, PartialEq, Eq)]
@@ -102,6 +105,113 @@ impl Widget for Button {
             }
             return UiResponse::Clicked;
         }
+        UiResponse::None
+    }
+}
+
+/// A single-line text input.
+pub struct TextInput<'a> {
+    /// The backing string to edit
+    pub text: &'a mut String,
+    /// Whether this field has focus
+    pub focused: &'a mut bool,
+    /// Placeholder text when `text` is empty
+    pub placeholder: String,
+}
+
+impl<'a> TextInput<'a> {
+    /// Create a new text input widget.
+    pub fn new<T: Into<String>>(
+        text: &'a mut String,
+        focused: &'a mut bool,
+        placeholder: T,
+    ) -> Self {
+        TextInput {
+            text,
+            focused,
+            placeholder: placeholder.into(),
+        }
+    }
+}
+
+// in ui/widget.rs
+impl<'a> Widget for TextInput<'a> {
+    fn ui(&mut self, ctx: &mut UiContext, area: Rect) -> UiResponse {
+        // 1) Draw border (thicker/brighter when focused)
+        let border_color = if *self.focused {
+            ctx.theme.focus_border
+        } else {
+            ctx.theme.panel_border
+        };
+        // outer border
+        ctx.push_cmd(DrawCmd::Rect {
+            rect: area,
+            color: border_color,
+        });
+        // inner background (inset by 1px)
+        let bg = Rect::new(area.x + 1.0, area.y + 1.0, area.w - 2.0, area.h - 2.0);
+        ctx.push_cmd(DrawCmd::Rect {
+            rect: area,
+            color: ctx.theme.panel_bg,
+        });
+
+        // 2) Handle clicking on/off
+        if ctx.mouse_down {
+            *self.focused = area.contains(ctx.mouse_pos);
+        }
+
+        // 3) Draw text or placeholder
+        let display = if self.text.is_empty() && !*self.focused {
+            &self.placeholder
+        } else {
+            &self.text
+        };
+        let mut color = ctx.theme.text_color;
+        if self.text.is_empty() {
+            color.a *= 0.5;
+        }
+        ctx.push_cmd(DrawCmd::Text {
+            text: display.clone(),
+            pos: vec2(area.x + 4.0, area.y + ctx.font_size + 2.0),
+            font_size: ctx.font_size,
+            color,
+        });
+
+        // 4) If focused, grab every keystroke & backspace
+        if *self.focused {
+            while let Some(c) = get_char_pressed() {
+                if !c.is_control() {
+                    self.text.push(c);
+                }
+            }
+            if is_key_pressed(KeyCode::Backspace) {
+                self.text.pop();
+            }
+        }
+
+        if *self.focused {
+            let dims = measure_text(
+                &self.text,
+                None,                 // use default font
+                ctx.font_size as u16, // font size in px
+                1.0,                  // scale
+            );
+            // caret x = left padding + text width
+            let caret_x = area.x + 4.0 + dims.width;
+            // caret y = baseline same as text
+            let caret_y = area.y + ctx.font_size + 2.0;
+
+            // blink period: toggle every 0.5s
+            if (get_time() % 1.0) < 0.5 {
+                ctx.push_cmd(DrawCmd::Text {
+                    text: "|".to_string(),
+                    pos: vec2(caret_x, caret_y),
+                    font_size: ctx.font_size,
+                    color: ctx.theme.text_color,
+                });
+            }
+        }
+
         UiResponse::None
     }
 }

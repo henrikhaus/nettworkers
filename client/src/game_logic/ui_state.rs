@@ -1,3 +1,5 @@
+use crate::SERVER_ADDR;
+
 /// UI state machine: manages which screen is active and navigation history
 
 /// All possible UI screens
@@ -7,20 +9,39 @@ pub enum Screen {
     InGame,
     PauseMenu,
     Settings,
-    // add more screens as needed
+    Disconnecting,
+    Connecting,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum MainMenuInput {
+    #[default]
+    None,
+    ServerIp,
+    PlayerName,
 }
 
 /// UIState holds a stack of screens to allow push/pop navigation
 #[derive(Debug, Default)]
 pub struct UiState {
     stack: Vec<Screen>,
+    pub server_ip: String,
+    pub ip_focused: bool,
+    pub player_name: String,
+    pub name_focused: bool,
+    pub focused_input: MainMenuInput,
 }
 
 impl UiState {
     /// Create a new UiState starting at MainMenu
-    pub fn new() -> Self {
+    pub fn new() -> UiState {
         UiState {
             stack: vec![Screen::MainMenu],
+            server_ip: String::from(SERVER_ADDR),
+            ip_focused: false,
+            player_name: String::new(),
+            name_focused: false,
+            focused_input: MainMenuInput::None,
         }
     }
 

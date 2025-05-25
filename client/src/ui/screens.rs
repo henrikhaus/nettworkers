@@ -1,6 +1,7 @@
 use crate::Scene;
 use crate::game_logic::{Screen, UiState};
-use crate::state::{GameState, PlayerState};
+use crate::state::GameState;
+use crate::ui::widget::TextInput;
 use crate::ui::{Button, DrawCmd, Label, UiContext, UiResponse, VBox, Widget};
 use macroquad::math::{Rect, vec2};
 use macroquad::time::{get_fps, get_time};
@@ -19,10 +20,20 @@ pub fn main_menu(ctx: &mut UiContext, state: &mut UiState) {
 
     let title_area = menu.item(ctx, vec2(300.0, 50.0));
     Label::new("My Rust Game").ui(ctx, title_area);
+    let ip_area = menu.item(ctx, vec2(300.0, 30.0));
+    TextInput::new(
+        &mut state.server_ip,
+        &mut state.ip_focused,
+        "127.0.0.1:9000",
+    )
+    .ui(ctx, ip_area);
+
+    let name_area = menu.item(ctx, vec2(300.0, 30.0));
+    TextInput::new(&mut state.player_name, &mut state.name_focused, "Your name").ui(ctx, name_area);
 
     let start_area = menu.item(ctx, vec2(200.0, 50.0));
-    if Button::new("Start Game").ui(ctx, start_area) == UiResponse::Clicked {
-        state.push(Screen::InGame);
+    if Button::new("Join").ui(ctx, start_area) == UiResponse::Clicked {
+        state.push(Screen::Connecting);
     }
 
     let settings_area = menu.item(ctx, vec2(200.0, 50.0));
@@ -123,9 +134,27 @@ pub fn pause_menu(ctx: &mut UiContext, state: &mut UiState) {
     }
 
     let main_menu_area = menu.item(ctx, vec2(200.0, 50.0));
-    if Button::new("Main Menu").ui(ctx, main_menu_area) == UiResponse::Clicked {
-        state.reset(Screen::MainMenu);
+    if Button::new("Disconnect").ui(ctx, main_menu_area) == UiResponse::Clicked {
+        state.reset(Screen::Disconnecting);
     }
 
     menu.end(ctx);
+}
+
+pub fn disconnecting_menu(ctx: &mut UiContext, state: &mut UiState) {
+    ctx.push_cmd(DrawCmd::Text {
+        text: "Disconnecting...".to_string(),
+        pos: vec2(10.0, 20.0 + ctx.font_size * 1.5),
+        font_size: ctx.font_size,
+        color: ctx.theme.text_color,
+    });
+}
+
+pub fn connecting_menu(ctx: &mut UiContext, state: &mut UiState) {
+    ctx.push_cmd(DrawCmd::Text {
+        text: "Connecting to server...".to_string(),
+        pos: vec2(10.0, 20.0 + ctx.font_size * 1.5),
+        font_size: ctx.font_size,
+        color: ctx.theme.text_color,
+    });
 }

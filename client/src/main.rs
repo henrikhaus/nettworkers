@@ -3,12 +3,17 @@ mod interpolator;
 mod render;
 mod ui;
 
+use crate::game_logic::{Screen, UiState};
+use crate::render::render;
+use crate::ui::screens::{connecting_menu, disconnecting_menu, settings_menu};
+use crate::ui::{UiContext, pause_menu, screens::hud, screens::main_menu};
 use flatbuffers::FlatBufferBuilder;
 use interpolator::Interpolator;
 use macroquad::math::f32;
 use macroquad::prelude::*;
 use serde::Deserialize;
 use shared::generated;
+use shared::generated::PlayerCommand;
 use shared::state;
 use shared::state::CommandContent;
 use state::{GameState, PlayerState, PlayerStateCommand};
@@ -20,10 +25,6 @@ use std::sync::mpsc::{self, Receiver, Sender};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use std::{io, thread};
 
-use crate::game_logic::{Screen, UiState};
-use crate::render::render;
-use crate::ui::{UiContext, pause_menu, screens::hud, screens::main_menu};
-
 const CLIENT_ADDR: &str = "127.0.0.1:0";
 const SERVER_ADDR: &str = "127.0.0.1:9000";
 const PLAYER_SIZE: f32 = 16.0;
@@ -32,7 +33,7 @@ const SCREEN_HEIGHT: f32 = 360.0;
 const SCREEN_CLAMP_DISTANCE_X: f32 = 200.0;
 const SCREEN_CLAMP_DISTANCE_Y: f32 = 400.0;
 const FONT_SIZE: f32 = 8.0;
-const DELAY_MILLIS: u64 = 1000;
+const DELAY_MILLIS: u64 = 50;
 const SCENE_NAME: &str = "scene_1";
 
 const SCALE: f32 = 1.0;
@@ -174,7 +175,10 @@ impl Client {
                 .as_micros() as u64;
 
             // Get commands
-            let commands = input_handler(&mut ui_state);
+            let mut commands = input_handler(&mut ui_state);
+            if *ui_state.current_screen() == Screen::Disconnecting {
+                commands.push(PlayerCommand::Disconnect)
+            }
             let player_state_command = match commands.is_empty() {
                 true => None,
                 false => Some(PlayerStateCommand {
@@ -224,6 +228,9 @@ impl Client {
                 Screen::MainMenu => main_menu(&mut ui, &mut ui_state),
                 Screen::InGame => hud(&mut ui, &mut ui_state, &game_state, &scene),
                 Screen::PauseMenu => pause_menu(&mut ui, &mut ui_state),
+                Screen::Settings => settings_menu(&mut ui, &mut ui_state),
+                Screen::Disconnecting => disconnecting_menu(&mut ui, &mut ui_state),
+                Screen::Connecting => connecting_menu(&mut ui, &mut ui_state),
                 _ => {}
             }
             ui.end_frame();
@@ -240,12 +247,13 @@ impl Client {
 
         let mut server_state_queue = VecDeque::new();
         let mut command_queue = VecDeque::new();
+        let mut server_addr = SERVER_ADDR;
 
         Ok(thread::spawn(move || {
             let mut buf = [0u8; 2048];
             loop {
                 if let Ok((amt, src_addr)) = self.socket.recv_from(&mut buf) {
-                    if src_addr.to_string() != SERVER_ADDR {
+                    if src_addr.to_string() != server_addr {
                         continue;
                     };
 
@@ -288,7 +296,7 @@ impl Client {
                             builder.finish(serialized_commands, None);
                             let bytes = builder.finished_data();
                             self.socket
-                                .send_to(bytes, SERVER_ADDR)
+                                .send_to(bytes, server_addr)
                                 .expect("Packet couldn't send.");
                         }
                     } else {

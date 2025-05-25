@@ -1,4 +1,4 @@
-enum PlayerCommand:uint8 { MoveRight, MoveLeft, Jump }
+enum PlayerCommand:uint8 { MoveRight, MoveLeft, Jump, Disconnect }
 
 table PlayerCommands {
     sequence: uint32;
