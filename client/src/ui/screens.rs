@@ -49,7 +49,7 @@ pub fn settings_menu(ctx: &mut UiContext, state: &mut UiState) {
 
     // Example toggle fullscreen
     let fullscreen_area = menu.item(ctx, vec2(200.0, 50.0));
-    if Button::new("Toggle Fullscreen").ui(ctx, fullscreen_area) == UiResponse::Clicked {
+    if Button::new("Fullscreen mode").ui(ctx, fullscreen_area) == UiResponse::Clicked {
         set_fullscreen(true);
     }
 

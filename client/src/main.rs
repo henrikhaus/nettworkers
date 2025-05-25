@@ -19,6 +19,7 @@ use std::sync::Arc;
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use std::{io, thread};
+use ui::screens::settings_menu;
 
 use crate::game_logic::{Screen, UiState};
 use crate::render::render;
@@ -224,6 +225,7 @@ impl Client {
                 Screen::MainMenu => main_menu(&mut ui, &mut ui_state),
                 Screen::InGame => hud(&mut ui, &mut ui_state, &game_state, &scene),
                 Screen::PauseMenu => pause_menu(&mut ui, &mut ui_state),
+                Screen::Settings => settings_menu(&mut ui, &mut ui_state),
                 _ => {}
             }
             ui.end_frame();
