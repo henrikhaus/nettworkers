@@ -52,11 +52,6 @@ impl Button {
             on_click: None,
         }
     }
-
-    pub fn with_callback<F: 'static + FnMut()>(mut self, cb: F) -> Self {
-        self.on_click = Some(Box::new(cb));
-        self
-    }
 }
 
 // Custom Debug impl omits callback
@@ -124,11 +119,6 @@ impl Toggle {
 
     pub fn with_state(mut self, initial_state: bool) -> Self {
         self.is_on = initial_state;
-        self
-    }
-
-    pub fn with_callback<F: 'static + FnMut(bool)>(mut self, cb: F) -> Self {
-        self.on_change = Some(Box::new(cb));
         self
     }
 }

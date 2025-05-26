@@ -171,6 +171,8 @@ fn main() -> io::Result<()> {
 
 #[cfg(test)]
 mod tests {
+    use shared::generated::{PlayerCommand, PlayerCommands, PlayerCommandsArgs};
+
     use super::*;
     use std::time::Duration;
 
