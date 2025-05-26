@@ -43,7 +43,6 @@ pub struct UiContext {
     pub font_size: f32,
     pub theme: Theme,
     draw_commands: Vec<DrawCmd>,
-    id_counter: u64,
 }
 
 impl UiContext {
@@ -55,7 +54,6 @@ impl UiContext {
             font_size: 16.0,
             theme: Theme::default(),
             draw_commands: Vec::new(),
-            id_counter: 0,
         }
     }
 
@@ -82,12 +80,5 @@ impl UiContext {
         let (x, y) = mouse_position();
         self.mouse_pos = Vec2::new(x, y);
         self.mouse_down = is_mouse_button_pressed(MouseButton::Left);
-    }
-
-    /// Generate a fresh ID for widgets or layout purposes
-    pub fn next_id(&mut self) -> u64 {
-        let id = self.id_counter;
-        self.id_counter += 1;
-        id
     }
 }

@@ -1,6 +1,5 @@
 use super::{GRAVITY, GROUND_FRICTION};
-use super::{GameState, PlayerState, SceneObject, SpawnPoint, Vec2};
-use crate::generated::Color;
+use super::{GameState, SceneObject, Vec2};
 
 pub fn physics(state: &mut GameState, dt: f32) {
     let mut reset_players = false;
@@ -169,6 +168,8 @@ fn check_collision(rect1: &SceneObject, rect2: &SceneObject) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::generated::Color;
+    use crate::state::{PlayerState, SpawnPoint};
     use std::collections::HashMap;
 
     fn create_test_state() -> GameState {

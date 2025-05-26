@@ -43,21 +43,9 @@ impl UiState {
         }
     }
 
-    /// Replace the current screen with a new one
-    pub fn replace(&mut self, screen: Screen) {
-        if let Some(last) = self.stack.last_mut() {
-            *last = screen;
-        }
-    }
-
     /// Clear history and set a single screen
     pub fn reset(&mut self, screen: Screen) {
         self.stack.clear();
         self.stack.push(screen);
-    }
-
-    /// Check if a screen is anywhere in the stack
-    pub fn contains(&self, screen: &Screen) -> bool {
-        self.stack.contains(screen)
     }
 }

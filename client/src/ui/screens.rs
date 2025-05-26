@@ -1,6 +1,6 @@
 use crate::Scene;
 use crate::game_logic::{Screen, UiState};
-use crate::state::{GameState, PlayerState};
+use crate::state::GameState;
 use crate::ui::{Button, DrawCmd, Label, UiContext, UiResponse, VBox, Widget};
 use macroquad::math::{Rect, vec2};
 use macroquad::time::{get_fps, get_time};

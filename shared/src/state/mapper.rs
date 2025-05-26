@@ -2,7 +2,7 @@ use crate::generated;
 use flatbuffers::{FlatBufferBuilder, WIPOffset, root};
 use std::collections::HashMap;
 
-use super::{GameState, PlayerState, PlayerStateCommand, SpawnPoint, Vec2};
+use super::{GameState, PlayerState, PlayerStateCommand, Vec2};
 
 const SCENE_NAME: &str = "scene_3";
 
