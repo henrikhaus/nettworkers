@@ -152,6 +152,9 @@ fn main() -> io::Result<()> {
 
 #[cfg(test)]
 mod tests {
+    use shared::generated::PlayerCommand;
+    use shared::generated::{PlayerCommands, PlayerCommandsArgs};
+
     use super::*;
     use std::net::UdpSocket;
     use std::time::Duration;
