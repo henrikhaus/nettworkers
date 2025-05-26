@@ -74,18 +74,8 @@ impl GameState {
         let mut accumulator = dt_micros;
 
         while accumulator >= FIXED_DT_MICROS {
-            let step = accumulator.min(FIXED_DT_MICROS);
-
-            // let execute_time = if step == accumulator {
-            //     u64::MAX
-            // } else {
-            //     dt_micros - accumulator
-            // };
-            let execute_time = SystemTime::now()
-                .duration_since(UNIX_EPOCH)
-                .unwrap()
-                .as_micros() as u64
-                - accumulator;
+            let step = FIXED_DT_MICROS;
+            let execute_time = end_tick - accumulator;
 
             self.execute_commands(execute_time);
 
