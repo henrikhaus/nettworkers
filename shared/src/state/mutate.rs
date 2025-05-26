@@ -133,6 +133,11 @@ impl GameState {
             _ => {}
         }
     }
+
+    pub fn clear_cache(&mut self) {
+        self.cached_dt_micros = 0;
+        self.scheduled_commands.clear();
+    }
 }
 
 impl PlayerState {

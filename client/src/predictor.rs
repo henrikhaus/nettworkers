@@ -87,12 +87,16 @@ impl Predictor {
                 let elapsed = self.last_command_timestamp.elapsed().as_micros() as u64;
                 self.last_command_timestamp +=
                     Instant::now().duration_since(self.last_reconciliation);
-                elapsed
+                // elapsed
+                600000
             }
         };
 
-        // let dt_micros = 600000;
+        // let dt_micros = 0;
 
+        println!("dt_micros: {}", dt_micros);
+
+        game_state.clear_cache();
         game_state.mutate(
             &self
                 .reconciliation_commands

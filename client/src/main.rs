@@ -219,7 +219,7 @@ impl Client {
                         delay_enabled = !delay_enabled;
                         self.settings_sender
                             .send(SettingsState {
-                                delay: if delay_enabled { 1000 } else { 0 },
+                                delay: if delay_enabled { 300 } else { 0 },
                             })
                             .unwrap();
                     },
