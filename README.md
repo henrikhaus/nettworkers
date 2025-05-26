@@ -1,194 +1,194 @@
 # Nettworkers
 
-A Rust-based networked multiplayer 2D platformer game demonstrating advanced client-server netcode techniques including client-side prediction, server reconciliation, and interpolation.
+Et Rust-basert nettverks-multiplayer 2D plattformspill som demonstrerer avanserte klient-server netcode-teknikker inkludert klient-side prediksjon, server-rekonsiliering og interpolasjon.
 
-## 🎮 Overview
+## 🎮 Oversikt
 
-Nettworkers is a real-time multiplayer platformer that showcases modern networking techniques used in competitive online games. Players can move around a 2D world with physics-based movement while experiencing smooth, responsive gameplay despite network latency.
+Nettworkers er et sanntids multiplayer plattformspill som viser frem moderne nettverksteknikker brukt i konkurransedyktige online spill. Spillere kan bevege seg rundt i en 2D verden med fysikkbasert bevegelse mens de opplever jevn, responsiv gameplay til tross for nettverkslatens.
 
-### Key Features
+### Hovedfunksjoner
 
-- **Real-time Multiplayer**: Support for multiple players in a shared 2D world
-- **Advanced Netcode**: Implementation of client-side prediction, server reconciliation, and interpolation
-- **Physics Engine**: Custom 2D physics with gravity, friction, and AABB collision detection
-- **Scene System**: JSON-based level loading with decorative and collidable objects
-- **Modern UI**: Immediate-mode GUI with multiple screens (main menu, settings, pause menu)
-- **Cross-platform**: Built with Rust for performance and portability
+- **Sanntids Multiplayer**: Støtte for flere spillere i en delt 2D verden
+- **Avansert Netcode**: Implementering av klient-side prediksjon, server-rekonsiliering og interpolasjon
+- **Fysikkmotor**: Tilpasset 2D fysikk med gravitasjon, friksjon og AABB kollisjonsdeteksjon
+- **Scene-system**: JSON-basert nivålasting med dekorative og kolliderbare objekter
+- **Moderne UI**: Immediate-mode GUI med flere skjermer (hovedmeny, innstillinger, pausemeny)
+- **Kryssplattform**: Bygget med Rust for ytelse og portabilitet
 
-## 🏗️ Architecture
+## 🏗️ Arkitektur
 
-The project is structured as a Rust workspace with three main components:
+Prosjektet er strukturert som et Rust workspace med tre hovedkomponenter:
 
 ```
 nettworkers/
-├── server/          # Authoritative game server
-├── client/          # Game client with rendering and UI
-├── shared/          # Common data structures and protocols
-└── scenes/          # JSON level definitions
+├── server/          # Autoritativ spillserver
+├── client/          # Spillklient med rendering og UI
+├── shared/          # Felles datastrukturer og protokoller
+└── scenes/          # JSON nivådefinisjoner
 ```
 
 ### Server (`server/`)
 
-- **UDP-based networking** on port 9000
-- **100ms tick rate** for consistent game state updates
-- **Authoritative physics** simulation
-- **Player management** with automatic ID assignment
-- **State broadcasting** to all connected clients
+- **UDP-basert nettverk** på port 9000
+- **100ms tick rate** for konsistente spilltilstandsoppdateringer
+- **Autoritativ fysikk** simulering
+- **Spillerhåndtering** med automatisk ID-tildeling
+- **Tilstandskringkasting** til alle tilkoblede klienter
 
-### Client (`client/`)
+### Klient (`client/`)
 
-- **Macroquad-based rendering** engine
-- **Client-side prediction** for responsive input
-- **Server reconciliation** for state consistency
-- **Interpolation** for smooth movement of other players
-- **Scene rendering** with parallax effects
+- **Macroquad-basert rendering** motor
+- **Klient-side prediksjon** for responsiv input
+- **Server-rekonsiliering** for tilstandskonsistens
+- **Interpolasjon** for jevn bevegelse av andre spillere
+- **Scene-rendering** med parallakse-effekter
 
-### Shared (`shared/`)
+### Delt (`shared/`)
 
-- **FlatBuffers serialization** for efficient network packets
-- **Common game state** structures
-- **Physics engine** shared between client and server
-- **Command system** for player input
+- **FlatBuffers serialisering** for effektive nettverkspakker
+- **Felles spilltilstand** strukturer
+- **Fysikkmotor** delt mellom klient og server
+- **Kommandosystem** for spillerinput
 
-## 🌐 Networking Features
+## 🌐 Nettverksfunksjoner
 
-### Client-Side Prediction
+### Klient-side Prediksjon
 
-Players can move immediately when pressing keys, without waiting for server confirmation. The client predicts the outcome of their actions locally for responsive controls.
+Spillere kan bevege seg umiddelbart når de trykker på taster, uten å vente på serverbekreftelse. Klienten predikerer utfallet av handlingene deres lokalt for responsive kontroller.
 
-### Server Reconciliation
+### Server-rekonsiliering
 
-When the client receives authoritative updates from the server, it reconciles any differences between its predicted state and the server's state using sequence numbers.
+Når klienten mottar autoritative oppdateringer fra serveren, rekonsilierer den eventuelle forskjeller mellom sin predikerte tilstand og serverens tilstand ved hjelp av sekvensnumre.
 
-### Interpolation
+### Interpolasjon
 
-Other players' movements are smoothly interpolated between server updates to provide fluid visual movement despite the discrete nature of network updates.
+Andre spilleres bevegelser interpoleres jevnt mellom serveroppdateringer for å gi flytende visuell bevegelse til tross for den diskrete naturen til nettverksoppdateringer.
 
-### Network Simulation
+### Nettverkssimulering
 
-- **Configurable delay**: 1000ms artificial delay for testing netcode robustness
-- **Sequence numbering**: For reliable state reconciliation
-- **Timestamp synchronization**: Using Unix epoch timestamps
+- **Konfigurerbar forsinkelse**: 1000ms kunstig forsinkelse for testing av netcode-robusthet
+- **Sekvensnummerering**: For pålitelig tilstandsrekonsiliering
+- **Tidsstempelsynkronisering**: Bruker Unix epoch tidsstempler
 
-## 🚀 Getting Started
+## 🚀 Kom i gang
 
-### Prerequisites
+### Forutsetninger
 
-- **Rust** (latest stable version)
-- **FlatBuffers compiler** (`flatc`) for protocol generation
+- **Rust** (nyeste stabile versjon)
+- **FlatBuffers kompilator** (`flatc`) for protokollgenerering
 
-### Installation
+### Installasjon
 
-1. **Clone the repository**:
+1. **Klon repositoriet**:
 
    ```bash
    git clone https://github.com/henrikhaus/nettworkers
    cd nettworkers
    ```
 
-2. **Generate FlatBuffers code**:
+2. **Generer FlatBuffers kode**:
 
    ```bash
    make generate_fbs
    ```
 
-3. **Build the project**:
+3. **Bygg prosjektet**:
    ```bash
    cargo build --workspace
    ```
 
-### Running the Game
+### Kjøre spillet
 
-1. **Start the server**:
+1. **Start serveren**:
 
    ```bash
    cargo run --bin server
    ```
 
-   The server will start on `127.0.0.1:9000`
+   Serveren vil starte på `127.0.0.1:9000`
 
-2. **Start the client** (in a separate terminal):
+2. **Start klienten** (i en separat terminal):
 
    ```bash
    cargo run --bin client
    ```
 
-3. **Multiple clients**: Run additional client instances to test multiplayer functionality
+3. **Flere klienter**: Kjør flere klientinstanser for å teste multiplayer-funksjonalitet
 
-### Controls
+### Kontroller
 
-- **WASD** or **Arrow Keys**: Move left/right and jump
-- **ESC**: Pause menu
-- **Settings**: Toggle prediction, reconciliation, and interpolation features
+- **WASD** eller **Piltaster**: Beveg venstre/høyre og hopp
+- **ESC**: Pausemeny
+- **Innstillinger**: Slå av/på prediksjon, rekonsiliering og interpolasjonsfunksjoner
 
-## 🔧 Technical Details
+## 🔧 Tekniske detaljer
 
-### Network Protocol
+### Nettverksprotokoll
 
-The game uses a custom UDP protocol with FlatBuffers serialization:
+Spillet bruker en tilpasset UDP-protokoll med FlatBuffers serialisering:
 
-#### Client → Server (Player Commands)
+#### Klient → Server (Spillerkommandoer)
 
 ```rust
 table PlayerCommands {
-    sequence: uint32;           // For reconciliation
-    dt_micro: uint64;          // Frame delta time
-    commands: [PlayerCommand]; // Input commands
-    client_timestamp_micro: uint64; // For latency calculation
+    sequence: uint32;           // For rekonsiliering
+    dt_micro: uint64;          // Ramme delta tid
+    commands: [PlayerCommand]; // Input kommandoer
+    client_timestamp_micro: uint64; // For latensberegning
 }
 ```
 
-#### Server → Client (Game State)
+#### Server → Klient (Spilltilstand)
 
 ```rust
 table GameState {
-    client_player: ClientPlayer; // Authoritative client state
-    players: [Player];          // Other players' states
-    sequence: uint32;           // Server sequence number
+    client_player: ClientPlayer; // Autoritativ klienttilstand
+    players: [Player];          // Andre spilleres tilstander
+    sequence: uint32;           // Server sekvensnummer
 }
 ```
 
-### Physics System
+### Fysikksystem
 
-- **Gravity**: Constant downward acceleration
-- **Friction**: Ground friction for realistic movement
-- **AABB Collision**: Axis-aligned bounding box collision detection
-- **Penetration Resolution**: Separates overlapping objects
+- **Gravitasjon**: Konstant nedadgående akselerasjon
+- **Friksjon**: Bakkefriskjon for realistisk bevegelse
+- **AABB Kollisjon**: Akselinjert bounding box kollisjonsdeteksjon
+- **Penetrasjonsløsning**: Separerer overlappende objekter
 
-### Performance Characteristics
+### Ytelseskarakteristikker
 
 - **Server Tick Rate**: 100ms (10 TPS)
-- **Client Frame Rate**: Variable (typically 60+ FPS)
-- **Network Packet Size**: ~100-500 bytes per packet
-- **Memory Usage**: Minimal due to Rust's zero-cost abstractions
+- **Klient Bilderate**: Variabel (typisk 60+ FPS)
+- **Nettverkspakke størrelse**: ~100-500 bytes per pakke
+- **Minnebruk**: Minimal på grunn av Rusts null-kostnad abstraksjoner
 
 ## 🧪 Testing
 
-Run the test suite:
+Kjør testsuiten:
 
 ```bash
-# Run all tests
+# Kjør alle tester
 cargo test --workspace
 
-# Run server tests only
+# Kjør kun servertester
 cargo test --package server
 
-# Run with verbose output
+# Kjør med verbose output
 cargo test --workspace --verbose
 ```
 
-### Test Coverage
+### Testdekning
 
-- **Server functionality**: Player management, packet handling, game state updates
-- **Physics system**: Movement, collision detection, boundary conditions
-- **Integration tests**: Client-server communication
-- **CI/CD**: Automated testing on GitHub Actions
+- **Serverfunksjonalitet**: Spillerhåndtering, pakkehåndtering, spilltilstandsoppdateringer
+- **Fysikksystem**: Bevegelse, kollisjonsdeteksjon, grensebetingelser
+- **Integrasjonstester**: Klient-server kommunikasjon
+- **CI/CD**: Automatisert testing på GitHub Actions
 
-## 🎨 Game Content
+## 🎨 Spillinnhold
 
-### Scene Format
+### Scene-format
 
-Levels are defined in JSON format with the following structure:
+Nivåer er definert i JSON-format med følgende struktur:
 
 ```json
 {
@@ -197,86 +197,90 @@ Levels are defined in JSON format with the following structure:
   "spawn_point": { "x": 100.0, "y": 450.0 },
   "background_color": { "r": 20, "g": 20, "b": 50, "a": 255 },
   "decorations": {
-    /* Visual elements */
+    /* Visuelle elementer */
   },
   "collidables": {
-    /* Solid platforms and obstacles */
+    /* Solide plattformer og hindringer */
   }
 }
 ```
 
-### Available Scenes
+### Tilgjengelige scener
 
-- **scene_1.json**: Main platformer level with multiple platforms and decorations
-- **scene_2.json**: Alternative level layout
+- **scene_1.json**: Hovedplattformspillnivå med flere plattformer og dekorasjoner
+- **scene_2.json**: Alternativ nivålayout
 
-## 🛠️ Development
+## 🛠️ Utvikling
 
-### Project Structure
+### Prosjektstruktur
 
 ```
 client/src/
-├── main.rs              # Client entry point and game loop
-├── predictor.rs         # Client-side prediction logic
-├── interpolator.rs      # Interpolation for other players
-├── render.rs           # Rendering system
-├── ui/                 # User interface components
-└── game_logic/         # Game state management
+├── main.rs              # Klient inngangspunkt og spillløkke
+├── predictor.rs         # Klient-side prediksjonslogikk
+├── interpolator.rs      # Interpolasjon for andre spillere
+├── render.rs           # Renderingsystem
+├── ui/                 # Brukergrensesnittkomponenter
+└── game_logic/         # Spilltilstandshåndtering
 
 server/src/
-└── main.rs             # Server entry point and networking
+└── main.rs             # Server inngangspunkt og nettverk
 
 shared/src/
-├── state/              # Game state and physics
-├── *.fbs              # FlatBuffers schema definitions
-└── generated/         # Auto-generated FlatBuffers code
+├── state/              # Spilltilstand og fysikk
+├── *.fbs              # FlatBuffers skjemadefinisjoner
+└── generated/         # Auto-generert FlatBuffers kode
 ```
 
-### Key Dependencies
+### Hovedavhengigheter
 
-- **flatbuffers**: Efficient binary serialization
-- **macroquad**: Cross-platform game framework
-- **serde/serde_json**: JSON parsing for scenes
-- **Standard library**: Networking, threading, collections
+- **flatbuffers**: Effektiv binær serialisering
+- **macroquad**: Kryssplattform spillramme
+- **serde/serde_json**: JSON parsing for scener
+- **Standard bibliotek**: Nettverk, threading, samlinger
 
-### Adding Features
+### Legge til funksjoner
 
-1. **New player commands**: Add to `player_commands.fbs` and regenerate
-2. **Game mechanics**: Implement in `shared/src/state/`
-3. **UI elements**: Add to `client/src/ui/`
-4. **Scenes**: Create new JSON files in `scenes/`
+1. **Nye spillerkommandoer**: Legg til i `player_commands.fbs` og regenerer
+2. **Spillmekanikk**: Implementer i `shared/src/state/`
+3. **UI-elementer**: Legg til i `client/src/ui/`
+4. **Scener**: Opprett nye JSON-filer i `scenes/`
 
-## 🔍 Debugging
+## 🔍 Feilsøking
 
-### Network Debugging
+### Nettverksfeilsøking
 
-- **Packet inspection**: Server logs all received packets
-- **Latency simulation**: Configurable delay for testing
-- **Sequence tracking**: Monitor prediction/reconciliation cycles
+- **Pakkeinspisering**: Server logger alle mottatte pakker
+- **Latenssimulering**: Konfigurerbar forsinkelse for testing
+- **Sekvenssporing**: Overvåk prediksjon/rekonsilieringsykler
 
-### Performance Profiling
+### Ytelsesprofilering
 
 ```bash
-# Profile the server
+# Profiler serveren
 cargo run --release --bin server
 
-# Profile the client
+# Profiler klienten
 cargo run --release --bin client
 ```
 
-## 📚 Learning Resources
+## 📚 Læringsressurser
 
-This project demonstrates several important networking concepts:
+Dette prosjektet demonstrerer flere viktige nettverkskonsepter:
 
-- **Client-Server Architecture**: Authoritative server with client prediction
-- **State Synchronization**: Keeping multiple clients in sync
-- **Latency Compensation**: Techniques for responsive gameplay
-- **Binary Protocols**: Efficient serialization with FlatBuffers
-- **Real-time Systems**: Managing timing and consistency
+- **Klient-Server Arkitektur**: Autoritativ server med klientprediksjon
+- **Tilstandssynkronisering**: Holde flere klienter synkronisert
+- **Latenskompensasjon**: Teknikker for responsiv gameplay
+- **Binære protokoller**: Effektiv serialisering med FlatBuffers
+- **Sanntidssystemer**: Håndtering av timing og konsistens
 
-## 🎯 Future Enhancements
+## 🎯 Fremtidige forbedringer
 
-- **TCP reliability layer** for critical game events (for example if we introduce gun combat)
-- **Advanced physics** (slopes, moving platforms)
-- **Audio system** with spatial sound
-- Better **reconciliation** optimizations
+- **TCP pålitelighetssjikt** for kritiske spillhendelser (for eksempel hvis vi introduserer våpenkamp)
+- **Avansert fysikk** (skråninger, bevegelige plattformer)
+- **Lydsystem** med romlig lyd
+- Bedre **rekonsilieringsoptimaliseringer**
+
+## 🪈 Pipeline
+
+Lenke til siste pipeline: https://github.com/henrikhaus/nettworkers/actions/runs/15261817355/job/42920909344
