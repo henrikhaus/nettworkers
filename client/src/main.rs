@@ -141,8 +141,6 @@ impl Client {
         let mut ui_state = UiState::new();
         let mut delay_enabled = true;
 
-        let mut server_delay = 0;
-
         loop {
             // Get Unix epoch timestamp (absolute time)
             let unix_timestamp_micro = SystemTime::now()
@@ -158,8 +156,6 @@ impl Client {
                 server_timestamp,
             )) = state_receiver.try_recv()
             {
-                server_delay = unix_timestamp_micro.max(server_timestamp) - server_timestamp;
-
                 interpolator.set_new_state(server_game_state.clone());
 
                 client_player_id = server_client_player.id;
@@ -167,6 +163,8 @@ impl Client {
                 game_state
                     .players
                     .insert(server_client_player.id, server_client_player);
+
+                let server_delay = unix_timestamp_micro.max(server_timestamp) - server_timestamp;
 
                 // reconciliation
                 predictor.reconciliation(

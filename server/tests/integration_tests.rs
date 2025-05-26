@@ -1,7 +1,7 @@
 use flatbuffers::FlatBufferBuilder;
 use shared::generated::{PlayerCommand, PlayerCommands, PlayerCommandsArgs};
 use shared::state::{GameState, PlayerState, SceneObject, SpawnPoint, Vec2};
-use std::collections::HashMap;
+use std::collections::{BinaryHeap, HashMap};
 use std::net::UdpSocket;
 use std::thread;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
@@ -39,6 +39,8 @@ fn test_client_server_communication() {
                         w: 100.0,
                         h: 20.0,
                     },
+                    cached_dt_micros: 0,
+                    scheduled_commands: BinaryHeap::new(),
                 };
 
                 // Add a client player (id: 1)
@@ -140,7 +142,8 @@ fn test_client_server_communication() {
         Ok((amt, src)) => {
             println!("Client received {} bytes from {}", amt, src);
             // Try to parse the response as a GameState
-            let (game_state, client_player, sequence) = GameState::deserialize(&buf[..amt]);
+            let (game_state, client_player, sequence, server_delay) =
+                GameState::deserialize(&buf[..amt]);
             println!(
                 "Deserialized game state has {} players, client_player_id: {}, sequence: {}",
                 game_state.players.len(),

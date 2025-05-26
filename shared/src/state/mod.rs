@@ -143,8 +143,8 @@ pub struct GameState {
     pub height: f32,
     pub spawn_point: SpawnPoint,
     pub win_point: SceneObject,
-    cached_dt_micros: u64,
-    scheduled_commands: BinaryHeap<mutate::ScheduledCommand>,
+    pub cached_dt_micros: u64,
+    pub scheduled_commands: BinaryHeap<mutate::ScheduledCommand>,
 }
 
 #[derive(Clone)]

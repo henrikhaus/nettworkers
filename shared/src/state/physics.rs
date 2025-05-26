@@ -1,6 +1,5 @@
 use super::{GRAVITY, GROUND_FRICTION};
-use super::{GameState, PlayerState, SceneObject, SpawnPoint, Vec2};
-use crate::generated::Color;
+use super::{GameState, SceneObject, Vec2};
 
 pub fn physics(state: &mut GameState, dt: f32, client_player_id: Option<u32>) {
     let mut reset_players = false;
@@ -175,7 +174,7 @@ fn check_collision(rect1: &SceneObject, rect2: &SceneObject) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::collections::HashMap;
+    use std::collections::{BinaryHeap, HashMap};
 
     fn create_test_state() -> GameState {
         GameState {
@@ -183,27 +182,29 @@ mod tests {
             collidables: vec![],
             width: 800.0,
             height: 600.0,
-            spawn_point: SpawnPoint { x: 0.0, y: 0.0 },
+            spawn_point: crate::state::SpawnPoint { x: 0.0, y: 0.0 },
             win_point: SceneObject {
                 x: 750.0,
                 y: 50.0,
                 w: 50.0,
                 h: 50.0,
             },
+            cached_dt_micros: 0,
+            scheduled_commands: BinaryHeap::new(),
         }
     }
 
-    fn create_test_player(id: u32, x: f32, y: f32) -> (u32, PlayerState) {
+    fn create_test_player(id: u32, x: f32, y: f32) -> (u32, crate::state::PlayerState) {
         (
             id,
-            PlayerState {
+            crate::state::PlayerState {
                 id,
                 name: format!("Player {}", id),
                 pos: Vec2 { x, y },
                 vel: Vec2 { x: 0.0, y: 0.0 },
                 grounded: false,
                 jump_timer: 0.0,
-                color: Color::Red,
+                color: crate::generated::Color::Red,
                 size: 32.0,
             },
         )
@@ -216,7 +217,7 @@ mod tests {
         player.vel = Vec2 { x: 10.0, y: 5.0 };
         state.players.insert(id, player);
 
-        physics(&mut state, 1.0);
+        physics(&mut state, 1.0, None);
 
         let player = state.players.get(&1).unwrap();
         assert!(player.pos.x > 100.0, "Player should move right");
@@ -230,7 +231,7 @@ mod tests {
         player.vel = Vec2 { x: 0.0, y: 50.0 };
         state.players.insert(id, player);
 
-        physics(&mut state, 1.0);
+        physics(&mut state, 1.0, None);
 
         let player = state.players.get(&1).unwrap();
         assert_eq!(
