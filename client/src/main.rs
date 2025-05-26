@@ -88,7 +88,7 @@ struct Client {
     settings_sender: Sender<SettingsState>,
 }
 
-type StateData = (GameState, PlayerState, u32);
+type StateData = (GameState, PlayerState, u32, u64);
 
 type NewClientResult = io::Result<(
     Client,
@@ -141,11 +141,25 @@ impl Client {
         let mut ui_state = UiState::new();
         let mut delay_enabled = true;
 
+        let mut server_delay = 0;
+
         loop {
+            // Get Unix epoch timestamp (absolute time)
+            let unix_timestamp_micro = SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap_or_default()
+                .as_micros() as u64;
+
             // Get new game state (if available)
-            if let Ok((server_game_state, server_client_player, server_sequence)) =
-                state_receiver.try_recv()
+            if let Ok((
+                server_game_state,
+                server_client_player,
+                server_sequence,
+                server_timestamp,
+            )) = state_receiver.try_recv()
             {
+                server_delay = unix_timestamp_micro.max(server_timestamp) - server_timestamp;
+
                 interpolator.set_new_state(server_game_state.clone());
 
                 client_player_id = server_client_player.id;
@@ -155,19 +169,18 @@ impl Client {
                     .insert(server_client_player.id, server_client_player);
 
                 // reconciliation
-                predictor.reconciliation(&mut game_state, server_sequence, client_player_id);
+                predictor.reconciliation(
+                    &mut game_state,
+                    server_sequence,
+                    client_player_id,
+                    server_delay,
+                );
             }
 
             // Get accurate frame timing
             let now = Instant::now();
             let dt_micros = now.duration_since(last_frame).as_micros() as u64;
             last_frame = now;
-
-            // Get Unix epoch timestamp (absolute time)
-            let unix_timestamp_micro = SystemTime::now()
-                .duration_since(UNIX_EPOCH)
-                .unwrap_or_default()
-                .as_micros() as u64;
 
             // Get commands
             let commands = input_handler(&mut ui_state);

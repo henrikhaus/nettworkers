@@ -45,7 +45,7 @@ impl GameState {
         bytes
     }
 
-    pub fn deserialize(packet: &[u8]) -> (GameState, PlayerState, u32) {
+    pub fn deserialize(packet: &[u8]) -> (GameState, PlayerState, u32, u64) {
         let game_state_packet = root::<generated::GameState>(packet).expect("No state received.");
 
         let players: HashMap<u32, PlayerState> = game_state_packet
@@ -86,7 +86,12 @@ impl GameState {
         let mut game_state = GameState::new(SCENE_NAME);
         game_state.players = players;
 
-        (game_state, client_player, game_state_packet.sequence())
+        (
+            game_state,
+            client_player,
+            game_state_packet.sequence(),
+            game_state_packet.server_timestamp(),
+        )
     }
 }
 

@@ -84,13 +84,10 @@ impl Predictor {
 
         let dt_micros = match self.reconciliation_commands.first() {
             Some(command) => command.client_timestamp.elapsed().as_micros() as u64,
-            None => {
-                let elapsed = self.last_command_timestamp.elapsed().as_micros() as u64;
-                self.last_command_timestamp +=
-                    Instant::now().duration_since(self.last_reconciliation);
-                elapsed
-            }
+            None => server_delay * 2,
         };
+
+        let dt_micros = server_delay * 2;
 
         println!("dt_micros: {}", dt_micros);
 
