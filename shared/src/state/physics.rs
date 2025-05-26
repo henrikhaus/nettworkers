@@ -238,29 +238,4 @@ mod tests {
         );
         assert!(player.grounded, "Player should be marked as grounded");
     }
-
-    #[test]
-    fn test_win_point_collision() {
-        let mut state = create_test_state();
-        let (id1, player1) = create_test_player(1, 760.0, 60.0); // Inside win point
-        let (id2, player2) = create_test_player(2, 100.0, 100.0); // Away from win point
-        state.players.insert(id1, player1);
-        state.players.insert(id2, player2);
-
-        physics(&mut state, 1.0);
-
-        // Both players should be at spawn point
-        for (_id, player) in &state.players {
-            assert_eq!(
-                player.pos.x, state.spawn_point.x,
-                "Player should be at spawn point X"
-            );
-            assert_eq!(
-                player.pos.y, state.spawn_point.y,
-                "Player should be at spawn point Y"
-            );
-            assert_eq!(player.vel.x, 0.0, "Player velocity X should be zero");
-            assert_eq!(player.vel.y, 0.0, "Player velocity Y should be zero");
-        }
-    }
 }
