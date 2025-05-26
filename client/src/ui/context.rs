@@ -81,7 +81,7 @@ impl UiContext {
     fn capture_input(&mut self) {
         let (x, y) = mouse_position();
         self.mouse_pos = Vec2::new(x, y);
-        self.mouse_down = is_mouse_button_down(MouseButton::Left);
+        self.mouse_down = is_mouse_button_pressed(MouseButton::Left);
     }
 
     /// Generate a fresh ID for widgets or layout purposes
