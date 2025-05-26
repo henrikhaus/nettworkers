@@ -11,7 +11,7 @@ use std::thread::sleep;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 const SCENE_NAME: &str = "scene_1";
-const TICK_DURATION: Duration = Duration::from_millis(16);
+const TICK_DURATION: Duration = Duration::from_millis(100);
 const SERVER_ADDR: &str = "127.0.0.1:9000";
 
 struct Server {

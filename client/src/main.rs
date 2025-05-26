@@ -128,7 +128,6 @@ impl Client {
         let mut predictor = Predictor::new();
 
         // Interpolation
-
         let mut interpolator = Interpolator::new(&game_state);
 
         // Loading game scene
