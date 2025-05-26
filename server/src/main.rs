@@ -10,7 +10,7 @@ use std::thread::sleep;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 const SCENE_NAME: &str = "scene_3";
-const TICK_DURATION: Duration = Duration::from_millis(16);
+const TICK_DURATION: Duration = Duration::from_millis(333);
 const SERVER_ADDR: &str = "127.0.0.1:9000";
 
 struct Server {
@@ -42,7 +42,7 @@ impl Server {
     }
 
     fn handle_packet(&self, packet: &[u8], src_addr: SocketAddr) {
-        let player_commands = PlayerStateCommand::deserialize(packet);
+        let player_state_command = PlayerStateCommand::deserialize(packet);
         let player_id = self.get_or_add_player_id(&src_addr);
 
         let system_time_micro = SystemTime::now()
@@ -50,12 +50,16 @@ impl Server {
             .unwrap_or_default()
             .as_micros() as u64;
 
-        let player_delay_ms = system_time_micro - player_commands.client_timestamp_micro;
-        if !player_commands.commands.is_empty() {
-            if let Err(e) = self
-                .command_sender
-                .send((player_id, player_commands, player_delay_ms))
-            {
+        let client_delay_micros = player_state_command
+            .client_timestamp_micros
+            .max(system_time_micro)
+            - player_state_command.client_timestamp_micros;
+        if !player_state_command.commands.is_empty() {
+            if let Err(e) = self.command_sender.send(CommandContent {
+                player_id,
+                player_state_command,
+                client_delay_micros,
+            }) {
                 eprintln!("Failed to send command: {}", e);
             }
         }
@@ -77,11 +81,20 @@ impl Server {
         new_player_id
     }
 
-    fn broadcast_state(&self, game_state: &GameState, sequence: u32) {
+    fn broadcast_state(&self, game_state: &GameState, sequence: HashMap<u32, u32>) {
+        let server_timestamp = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_micros() as u64;
         // Send data to client
         for (ip, player_id) in self.read_ip_id() {
             let mut builder = FlatBufferBuilder::with_capacity(2048);
-            let bytes = game_state.serialize(&mut builder, player_id, sequence);
+            let bytes = game_state.serialize(
+                &mut builder,
+                player_id,
+                sequence.get(&player_id).copied().unwrap_or(0),
+                server_timestamp,
+            );
             if let Err(e) = self.socket.send_to(bytes, ip) {
                 eprintln!("Failed to send data to client: {}", e);
             }
@@ -108,11 +121,17 @@ impl Server {
                 let dt_micros = start.duration_since(last_tick).as_micros() as u64;
                 last_tick = start;
 
-                let mut sequence = 0;
+                let mut sequence = HashMap::new();
                 let mut commands = Vec::new();
-                while let Ok((player_id, command, player_delay_ms)) = command_receiver.try_recv() {
-                    sequence = sequence.max(command.sequence);
-                    commands.push((player_id, command, player_delay_ms));
+                while let Ok(mutate_command) = command_receiver.try_recv() {
+                    sequence.insert(
+                        mutate_command.player_id,
+                        *sequence
+                            .get(&mutate_command.player_id)
+                            .unwrap_or(&0)
+                            .max(&mutate_command.player_state_command.sequence),
+                    );
+                    commands.push(mutate_command);
                 }
 
                 self.tick(&mut game_state, &commands, dt_micros);
@@ -140,7 +159,7 @@ impl Server {
     }
 
     fn tick(&self, game_state: &mut GameState, commands: &[CommandContent], dt_micros: u64) {
-        game_state.mutate(commands, dt_micros);
+        game_state.mutate(commands, dt_micros, None);
     }
 }
 
@@ -155,7 +174,6 @@ mod tests {
     use shared::generated::{PlayerCommand, PlayerCommands, PlayerCommandsArgs};
 
     use super::*;
-    use std::net::UdpSocket;
     use std::time::Duration;
 
     const TEST_SERVER_PORT_START: u16 = 9100;
@@ -195,17 +213,19 @@ mod tests {
 
     #[test]
     fn test_handle_packet() {
+        use shared::generated;
+
         let addr = get_test_server_addr();
         let (server, receiver) = Server::with_addr(&addr).expect("Server should be created");
         let client_addr = "127.0.0.1:8001".parse().unwrap();
 
         // Create a test packet
         let mut builder = FlatBufferBuilder::new();
-        let commands = vec![PlayerCommand::MoveRight];
+        let commands = vec![generated::PlayerCommand::MoveRight];
         let commands_vec = builder.create_vector(&commands);
-        let player_commands = PlayerCommands::create(
+        let player_commands = generated::PlayerCommands::create(
             &mut builder,
-            &PlayerCommandsArgs {
+            &generated::PlayerCommandsArgs {
                 sequence: 1,
                 dt_micro: 16667, // ~60fps
                 commands: Some(commands_vec),
@@ -222,13 +242,19 @@ mod tests {
         server.handle_packet(packet, client_addr);
 
         // Check if command was received
-        let (player_id, received_commands, _) = receiver
+        let mutate_command = receiver
             .recv_timeout(Duration::from_secs(1))
             .expect("Should receive command");
+
+        let player_id = mutate_command.player_id;
+        let received_commands = mutate_command.player_state_command;
 
         assert_eq!(player_id, 1); // First player gets ID 1
         assert_eq!(received_commands.sequence, 1);
         assert_eq!(received_commands.commands.len(), 1);
-        assert_eq!(received_commands.commands[0], PlayerCommand::MoveRight);
+        assert_eq!(
+            received_commands.commands[0],
+            generated::PlayerCommand::MoveRight
+        );
     }
 }

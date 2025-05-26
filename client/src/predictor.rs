@@ -1,13 +1,14 @@
+use std::time::Instant;
+
 use shared::state::{CommandContent, GameState, PlayerStateCommand};
 
-pub struct ReconciliationFrame {
-    command: Option<CommandContent>,
-    frame_dt_micros: u64,
+pub struct ReconciliationCommand {
+    command: CommandContent,
     sequence: u32,
 }
 
 pub struct Predictor {
-    unconfirmed_frames: Vec<ReconciliationFrame>,
+    reconciliation_commands: Vec<ReconciliationCommand>,
     pub active_prediction: bool,
     pub active_reconciliation: bool,
     pub sequence: u32,
@@ -16,7 +17,7 @@ pub struct Predictor {
 impl Predictor {
     pub fn new() -> Self {
         Predictor {
-            unconfirmed_frames: Vec::new(),
+            reconciliation_commands: Vec::new(),
             active_prediction: true,
             active_reconciliation: true,
             sequence: 0,
@@ -34,41 +35,57 @@ impl Predictor {
             return;
         }
 
-        let mut command_content = None;
         if let Some(command) = player_state_command {
-            game_state.mutate(&[(client_player_id, command.clone(), 0)], dt_micros);
-            command_content = Some((client_player_id, command.clone(), 0));
+            let command_content = CommandContent {
+                player_id: client_player_id,
+                player_state_command: command.clone(),
+                client_delay_micros: 0,
+            };
+            game_state.mutate(
+                &[command_content.clone()],
+                dt_micros,
+                Some(client_player_id),
+            );
+
+            if self.active_reconciliation {
+                self.reconciliation_commands.push(ReconciliationCommand {
+                    command: command_content,
+                    sequence: self.sequence,
+                });
+                self.sequence += 1;
+            }
         } else {
-            game_state.mutate(&[], dt_micros);
-        }
-
-        if self.active_reconciliation {
-            self.unconfirmed_frames.push(ReconciliationFrame {
-                command: command_content,
-                frame_dt_micros: dt_micros,
-                sequence: self.sequence,
-            });
-
-            self.sequence += 1;
+            game_state.mutate(&[], dt_micros, Some(client_player_id));
         }
     }
 
-    pub fn reconciliation(&mut self, game_state: &mut GameState, server_sequence: u32) {
+    pub fn reconciliation(
+        &mut self,
+        game_state: &mut GameState,
+        server_sequence: u32,
+        client_player_id: u32,
+        server_delay: u64,
+    ) {
         if !self.active_reconciliation {
             return;
         }
 
-        self.unconfirmed_frames
-            .retain(|frame| frame.sequence > server_sequence);
+        self.reconciliation_commands
+            .retain(|c| c.sequence > server_sequence);
 
-        for reconciliation_frame in &self.unconfirmed_frames {
-            let dt_micros = reconciliation_frame.frame_dt_micros;
+        let dt_micros = server_delay * 2;
 
-            if let Some(command) = &reconciliation_frame.command {
-                game_state.mutate(&[command.clone()], dt_micros);
-            } else {
-                game_state.mutate(&[], dt_micros);
-            };
-        }
+        println!("dt_micros: {}", dt_micros);
+
+        game_state.clear_cache();
+        game_state.mutate(
+            &self
+                .reconciliation_commands
+                .iter()
+                .map(|c| c.command.clone())
+                .collect::<Vec<_>>(),
+            dt_micros,
+            Some(client_player_id),
+        );
     }
 }

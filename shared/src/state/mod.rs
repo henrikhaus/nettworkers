@@ -4,7 +4,7 @@ mod physics;
 
 use crate::generated::{self, Color};
 use serde::Deserialize;
-use std::collections::HashMap;
+use std::collections::{BinaryHeap, HashMap};
 use std::fmt::Display;
 use std::fs::File;
 use std::ops::{Add, Mul, Sub};
@@ -129,10 +129,10 @@ impl PlayerState {
 #[derive(Debug, Clone)]
 pub struct PlayerStateCommand {
     pub sequence: u32,
-    pub dt_micro: u64,
+    pub dt_micros: u64,
     // Mutliple commands because the player can for example jump and move in the same frame
     pub commands: Vec<generated::PlayerCommand>,
-    pub client_timestamp_micro: u64,
+    pub client_timestamp_micros: u64,
 }
 
 #[derive(Clone)]
@@ -143,9 +143,16 @@ pub struct GameState {
     pub height: f32,
     pub spawn_point: SpawnPoint,
     pub win_point: SceneObject,
+    pub cached_dt_micros: u64,
+    pub scheduled_commands: BinaryHeap<mutate::ScheduledCommand>,
 }
 
-pub type CommandContent = (u32, PlayerStateCommand, u64);
+#[derive(Clone)]
+pub struct CommandContent {
+    pub player_id: u32,
+    pub player_state_command: PlayerStateCommand,
+    pub client_delay_micros: u64,
+}
 
 impl GameState {
     pub fn new(scene_name: &str) -> GameState {
@@ -164,6 +171,8 @@ impl GameState {
             height: scene.height,
             spawn_point,
             win_point,
+            cached_dt_micros: 0,
+            scheduled_commands: BinaryHeap::new(),
         }
     }
 

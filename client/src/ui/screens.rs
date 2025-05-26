@@ -87,7 +87,7 @@ pub fn settings_menu(
     }
 
     let delay_toggle_area = menu.item(ctx, vec2(200.0, 50.0));
-    if Toggle::new("1000ms delay")
+    if Toggle::new("300ms delay")
         .with_state(delay)
         .ui(ctx, delay_toggle_area)
         == UiResponse::Clicked

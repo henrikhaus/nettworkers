@@ -28,6 +28,7 @@ table GameState {
     client_player: ClientPlayer;
     players: [Player];
     sequence: uint32;
+    server_timestamp: uint64;
 }
 
 root_type GameState;

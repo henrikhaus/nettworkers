@@ -1,6 +1,9 @@
 use crate::generated;
 use flatbuffers::{FlatBufferBuilder, WIPOffset, root};
-use std::collections::HashMap;
+use std::{
+    collections::HashMap,
+    time::{SystemTime, UNIX_EPOCH},
+};
 
 use super::{GameState, PlayerState, PlayerStateCommand, Vec2};
 
@@ -12,6 +15,7 @@ impl GameState {
         builder: &'a mut FlatBufferBuilder,
         client_player_id: u32,
         sequence: u32,
+        server_timestamp: u64,
     ) -> &'a [u8] {
         let client_player = self
             .players
@@ -33,6 +37,7 @@ impl GameState {
                 players: Some(players_vec),
                 client_player: Some(client_player_offset),
                 sequence,
+                server_timestamp: server_timestamp,
             },
         );
         builder.finish(players_list, None);
@@ -40,7 +45,7 @@ impl GameState {
         bytes
     }
 
-    pub fn deserialize(packet: &[u8]) -> (GameState, PlayerState, u32) {
+    pub fn deserialize(packet: &[u8]) -> (GameState, PlayerState, u32, u64) {
         let game_state_packet = root::<generated::GameState>(packet).expect("No state received.");
 
         let players: HashMap<u32, PlayerState> = game_state_packet
@@ -81,7 +86,12 @@ impl GameState {
         let mut game_state = GameState::new(SCENE_NAME);
         game_state.players = players;
 
-        (game_state, client_player, game_state_packet.sequence())
+        (
+            game_state,
+            client_player,
+            game_state_packet.sequence(),
+            game_state_packet.server_timestamp(),
+        )
     }
 }
 
@@ -144,8 +154,8 @@ impl PlayerStateCommand {
             &generated::PlayerCommandsArgs {
                 sequence: self.sequence,
                 commands: Some(commands_vec),
-                dt_micro: self.dt_micro,
-                client_timestamp_micro: self.client_timestamp_micro,
+                dt_micro: self.dt_micros,
+                client_timestamp_micro: self.client_timestamp_micros,
             },
         )
     }
@@ -165,8 +175,8 @@ impl PlayerStateCommand {
         Self {
             sequence,
             commands,
-            dt_micro,
-            client_timestamp_micro,
+            dt_micros: dt_micro,
+            client_timestamp_micros: client_timestamp_micro,
         }
     }
 }

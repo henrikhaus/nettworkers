@@ -88,7 +88,7 @@ struct Client {
     settings_sender: Sender<SettingsState>,
 }
 
-type StateData = (GameState, PlayerState, u32);
+type StateData = (GameState, PlayerState, u32, u64);
 
 type NewClientResult = io::Result<(
     Client,
@@ -142,9 +142,19 @@ impl Client {
         let mut delay_enabled = true;
 
         loop {
+            // Get Unix epoch timestamp (absolute time)
+            let unix_timestamp_micro = SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap_or_default()
+                .as_micros() as u64;
+
             // Get new game state (if available)
-            if let Ok((server_game_state, server_client_player, server_sequence)) =
-                state_receiver.try_recv()
+            if let Ok((
+                server_game_state,
+                server_client_player,
+                server_sequence,
+                server_timestamp,
+            )) = state_receiver.try_recv()
             {
                 interpolator.set_new_state(server_game_state.clone());
 
@@ -154,8 +164,15 @@ impl Client {
                     .players
                     .insert(server_client_player.id, server_client_player);
 
+                let server_delay = unix_timestamp_micro.max(server_timestamp) - server_timestamp;
+
                 // reconciliation
-                predictor.reconciliation(&mut game_state, server_sequence);
+                predictor.reconciliation(
+                    &mut game_state,
+                    server_sequence,
+                    client_player_id,
+                    server_delay,
+                );
             }
 
             // Get accurate frame timing
@@ -163,21 +180,15 @@ impl Client {
             let dt_micros = now.duration_since(last_frame).as_micros() as u64;
             last_frame = now;
 
-            // Get Unix epoch timestamp (absolute time)
-            let unix_timestamp_micro = SystemTime::now()
-                .duration_since(UNIX_EPOCH)
-                .unwrap_or_default()
-                .as_micros() as u64;
-
             // Get commands
             let commands = input_handler(&mut ui_state);
             let player_state_command = match commands.is_empty() {
                 true => None,
                 false => Some(PlayerStateCommand {
                     sequence: predictor.sequence,
-                    dt_micro: dt_micros,
+                    dt_micros,
                     commands,
-                    client_timestamp_micro: unix_timestamp_micro,
+                    client_timestamp_micros: unix_timestamp_micro,
                 }),
             };
 
@@ -219,7 +230,7 @@ impl Client {
                         delay_enabled = !delay_enabled;
                         self.settings_sender
                             .send(SettingsState {
-                                delay: if delay_enabled { 1000 } else { 0 },
+                                delay: if delay_enabled { 300 } else { 0 },
                             })
                             .unwrap();
                     },
