@@ -108,6 +108,7 @@ struct Scene {
     width: f32,
     height: f32,
     spawn_point: SpawnPoint,
+    win_point: SceneObject,
 }
 
 impl PlayerState {
@@ -141,6 +142,7 @@ pub struct GameState {
     pub width: f32,
     pub height: f32,
     pub spawn_point: SpawnPoint,
+    pub win_point: SceneObject,
 }
 
 pub type CommandContent = (u32, PlayerStateCommand, u64);
@@ -153,6 +155,7 @@ impl GameState {
         let scene: Scene = serde_json::from_reader(file).expect("JSON must match Scene");
         let collidables: Vec<SceneObject> = scene.collidables.into_values().collect();
         let spawn_point: SpawnPoint = scene.spawn_point.clone();
+        let win_point: SceneObject = scene.win_point.clone();
 
         GameState {
             players: HashMap::new(),
@@ -160,6 +163,7 @@ impl GameState {
             width: scene.width,
             height: scene.height,
             spawn_point,
+            win_point,
         }
     }
 

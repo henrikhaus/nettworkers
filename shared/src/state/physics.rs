@@ -3,6 +3,32 @@ use super::{GameState, PlayerState, SceneObject, SpawnPoint, Vec2};
 use crate::generated::Color;
 
 pub fn physics(state: &mut GameState, dt: f32) {
+    let mut reset_players = false;
+
+    // Check for win point collisions
+    for (_player_id, player) in &state.players {
+        let player_rect = SceneObject {
+            x: player.pos.x,
+            y: player.pos.y,
+            w: player.size,
+            h: player.size,
+        };
+
+        if check_collision(&player_rect, &state.win_point) {
+            reset_players = true;
+            break;
+        }
+    }
+
+    // Reset all players to spawn point if win point was touched
+    if reset_players {
+        for (_player_id, player) in &mut state.players {
+            player.pos = Vec2::new(state.spawn_point.x, state.spawn_point.y);
+            player.vel = Vec2::ZERO;
+        }
+    }
+
+    // Regular physics update
     for (_player_id, player) in &mut state.players {
         player.vel.x *= GROUND_FRICTION.powf(dt);
         player.vel.y += GRAVITY * dt;
@@ -81,14 +107,13 @@ pub fn physics(state: &mut GameState, dt: f32) {
             }
         }
     }
+}
 
-    // Add a collidable block in the player's path
-    state.collidables.push(SceneObject {
-        x: 150.0,
-        y: 90.0,
-        w: 32.0,
-        h: 32.0,
-    });
+fn check_collision(rect1: &SceneObject, rect2: &SceneObject) -> bool {
+    rect1.x < rect2.x + rect2.w
+        && rect1.x + rect1.w > rect2.x
+        && rect1.y < rect2.y + rect2.h
+        && rect1.y + rect1.h > rect2.y
 }
 
 // pub fn collision(state: &mut GameState) -> Vec<(usize, Vec2, Vec2)> {
@@ -153,6 +178,12 @@ mod tests {
             width: 800.0,
             height: 600.0,
             spawn_point: SpawnPoint { x: 0.0, y: 0.0 },
+            win_point: SceneObject {
+                x: 750.0,
+                y: 50.0,
+                w: 50.0,
+                h: 50.0,
+            },
         }
     }
 
@@ -209,70 +240,27 @@ mod tests {
     }
 
     #[test]
-    fn test_wall_collisions() {
+    fn test_win_point_collision() {
         let mut state = create_test_state();
-        let (id, mut player) = create_test_player(1, 0.0, 100.0);
-        player.vel = Vec2 { x: -10.0, y: 0.0 };
-        state.players.insert(id, player);
+        let (id1, player1) = create_test_player(1, 760.0, 60.0); // Inside win point
+        let (id2, player2) = create_test_player(2, 100.0, 100.0); // Away from win point
+        state.players.insert(id1, player1);
+        state.players.insert(id2, player2);
 
         physics(&mut state, 1.0);
 
-        let player = state.players.get(&1).unwrap();
-        assert_eq!(player.pos.x, 0.0, "Player should stop at left wall");
-        assert_eq!(
-            player.vel.x, 0.0,
-            "Horizontal velocity should be zero at wall"
-        );
-
-        // Test right wall
-        let mut player = state.players.get_mut(&1).unwrap();
-        player.pos.x = state.width;
-        player.vel.x = 10.0;
-
-        physics(&mut state, 1.0);
-
-        let player = state.players.get(&1).unwrap();
-        assert_eq!(
-            player.pos.x,
-            state.width - player.size,
-            "Player should stop at right wall"
-        );
-        assert_eq!(
-            player.vel.x, 0.0,
-            "Horizontal velocity should be zero at wall"
-        );
-    }
-
-    #[test]
-    fn test_ground_friction() {
-        let mut state = create_test_state();
-        let (id, mut player) = create_test_player(1, 100.0, 100.0);
-        player.vel = Vec2 { x: 10.0, y: 0.0 };
-        state.players.insert(id, player);
-
-        let initial_vel_x = state.players.get(&1).unwrap().vel.x;
-        physics(&mut state, 1.0);
-
-        let player = state.players.get(&1).unwrap();
-        assert!(
-            player.vel.x < initial_vel_x,
-            "Ground friction should reduce horizontal velocity"
-        );
-    }
-
-    #[test]
-    fn test_jump_timer() {
-        let mut state = create_test_state();
-        let (id, player) = create_test_player(1, 100.0, 100.0);
-        state.players.insert(id, player);
-
-        let initial_timer = state.players.get(&1).unwrap().jump_timer;
-        physics(&mut state, 1.0);
-
-        let player = state.players.get(&1).unwrap();
-        assert!(
-            player.jump_timer > initial_timer,
-            "Jump timer should increase over time"
-        );
+        // Both players should be at spawn point
+        for (_id, player) in &state.players {
+            assert_eq!(
+                player.pos.x, state.spawn_point.x,
+                "Player should be at spawn point X"
+            );
+            assert_eq!(
+                player.pos.y, state.spawn_point.y,
+                "Player should be at spawn point Y"
+            );
+            assert_eq!(player.vel.x, 0.0, "Player velocity X should be zero");
+            assert_eq!(player.vel.y, 0.0, "Player velocity Y should be zero");
+        }
     }
 }

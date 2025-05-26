@@ -4,6 +4,8 @@ use std::collections::HashMap;
 
 use super::{GameState, PlayerState, PlayerStateCommand, SpawnPoint, Vec2};
 
+const SCENE_NAME: &str = "scene_3";
+
 impl GameState {
     pub fn serialize<'a>(
         &self,
@@ -39,9 +41,9 @@ impl GameState {
     }
 
     pub fn deserialize(packet: &[u8]) -> (GameState, PlayerState, u32) {
-        let game_state = root::<generated::GameState>(packet).expect("No state received.");
+        let game_state_packet = root::<generated::GameState>(packet).expect("No state received.");
 
-        let players: HashMap<u32, PlayerState> = game_state
+        let players: HashMap<u32, PlayerState> = game_state_packet
             .players()
             .expect("Should have players array")
             .into_iter()
@@ -62,7 +64,7 @@ impl GameState {
             })
             .collect();
 
-        let client_player: PlayerState = game_state
+        let client_player: PlayerState = game_state_packet
             .client_player()
             .map(|p| PlayerState {
                 id: p.id(),
@@ -76,17 +78,10 @@ impl GameState {
             })
             .expect("Should have client player");
 
-        (
-            GameState {
-                players,
-                collidables: vec![],
-                width: 0.0,
-                height: 0.0,
-                spawn_point: SpawnPoint { x: 0.0, y: 0.0 },
-            },
-            client_player,
-            game_state.sequence(),
-        )
+        let mut game_state = GameState::new(SCENE_NAME);
+        game_state.players = players;
+
+        (game_state, client_player, game_state_packet.sequence())
     }
 }
 

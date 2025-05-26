@@ -1,6 +1,6 @@
 use flatbuffers::FlatBufferBuilder;
 use shared::generated::{PlayerCommand, PlayerCommands, PlayerCommandsArgs};
-use shared::state::{GameState, PlayerState, SpawnPoint, Vec2};
+use shared::state::{GameState, PlayerState, SceneObject, SpawnPoint, Vec2};
 use std::collections::HashMap;
 use std::net::UdpSocket;
 use std::thread;
@@ -33,6 +33,12 @@ fn test_client_server_communication() {
                     width: 800.0,
                     height: 600.0,
                     spawn_point: SpawnPoint { x: 100.0, y: 100.0 },
+                    win_point: SceneObject {
+                        x: 2750.0,
+                        y: 159.0,
+                        w: 100.0,
+                        h: 20.0,
+                    },
                 };
 
                 // Add a client player (id: 1)
