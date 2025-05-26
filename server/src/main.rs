@@ -78,11 +78,15 @@ impl Server {
         new_player_id
     }
 
-    fn broadcast_state(&self, game_state: &GameState, sequence: u32) {
+    fn broadcast_state(&self, game_state: &GameState, sequence: HashMap<u32, u32>) {
         // Send data to client
         for (ip, player_id) in self.read_ip_id() {
             let mut builder = FlatBufferBuilder::with_capacity(2048);
-            let bytes = game_state.serialize(&mut builder, player_id, sequence);
+            let bytes = game_state.serialize(
+                &mut builder,
+                player_id,
+                sequence.get(&player_id).copied().unwrap_or(0),
+            );
             if let Err(e) = self.socket.send_to(bytes, ip) {
                 eprintln!("Failed to send data to client: {}", e);
             }
@@ -109,10 +113,16 @@ impl Server {
                 let dt_micros = start.duration_since(last_tick).as_micros() as u64;
                 last_tick = start;
 
-                let mut sequence = 0;
+                let mut sequence = HashMap::new();
                 let mut commands = Vec::new();
                 while let Ok(mutate_command) = command_receiver.try_recv() {
-                    sequence = sequence.max(mutate_command.player_state_command.sequence);
+                    sequence.insert(
+                        mutate_command.player_id,
+                        *sequence
+                            .get(&mutate_command.player_id)
+                            .unwrap_or(&0)
+                            .max(&mutate_command.player_state_command.sequence),
+                    );
                     commands.push(mutate_command);
                 }
 
