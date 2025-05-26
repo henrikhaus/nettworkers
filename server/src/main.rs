@@ -140,7 +140,7 @@ impl Server {
     }
 
     fn tick(&self, game_state: &mut GameState, commands: &[CommandContent], dt_micros: u64) {
-        game_state.mutate(commands, dt_micros);
+        game_state.mutate(commands, dt_micros, None);
     }
 }
 

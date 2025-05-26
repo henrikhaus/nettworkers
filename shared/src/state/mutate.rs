@@ -36,7 +36,12 @@ impl Ord for ScheduledCommand {
 }
 
 impl GameState {
-    pub fn mutate(&mut self, commands: &[CommandContent], dt_micros: u64) {
+    pub fn mutate(
+        &mut self,
+        commands: &[CommandContent],
+        dt_micros: u64,
+        client_player_id: Option<u32>,
+    ) {
         let end_tick = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .unwrap_or_default()
@@ -84,7 +89,7 @@ impl GameState {
             self.execute_commands(&mut scheduled_commands, execute_time);
 
             let dt = step as f32 / 1000000.0;
-            physics(self, dt);
+            physics(self, dt, client_player_id);
 
             accumulator -= step;
         }

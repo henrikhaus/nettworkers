@@ -2,11 +2,17 @@ use super::{GRAVITY, GROUND_FRICTION};
 use super::{GameState, PlayerState, SceneObject, SpawnPoint, Vec2};
 use crate::generated::Color;
 
-pub fn physics(state: &mut GameState, dt: f32) {
+pub fn physics(state: &mut GameState, dt: f32, client_player_id: Option<u32>) {
     let mut reset_players = false;
 
     // Check for win point collisions
-    for (_player_id, player) in &state.players {
+    for (player_id, player) in &state.players {
+        if let Some(client_player_id) = client_player_id {
+            if *player_id != client_player_id {
+                continue;
+            }
+        }
+
         let player_rect = SceneObject {
             x: player.pos.x,
             y: player.pos.y,

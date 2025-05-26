@@ -155,7 +155,7 @@ impl Client {
                     .insert(server_client_player.id, server_client_player);
 
                 // reconciliation
-                predictor.reconciliation(&mut game_state, server_sequence);
+                predictor.reconciliation(&mut game_state, server_sequence, client_player_id);
             }
 
             // Get accurate frame timing
