@@ -2,6 +2,12 @@
 
 Et Rust-basert nettverks-multiplayer 2D plattformspill som demonstrerer avanserte klient-server netcode-teknikker inkludert klient-side prediksjon, server-rekonsiliering og interpolasjon.
 
+Medlemmene på gruppen er:
+
+- [Henrik Kvamme](https://github.com/henrik392)
+- [Henrik Hausberg](https://github.com/henrikhaus)
+- [Embret Roås](https://github.com/Embretr)
+
 ## 🎮 Oversikt
 
 Nettworkers er et sanntids multiplayer plattformspill som viser frem moderne nettverksteknikker brukt i konkurransedyktige online spill. Spillere kan bevege seg rundt i en 2D verden med fysikkbasert bevegelse mens de opplever jevn, responsiv gameplay til tross for nettverkslatens.
