@@ -6,6 +6,8 @@ use macroquad::math::{Rect, vec2};
 use macroquad::time::{get_fps, get_time};
 use macroquad::window::{screen_height, screen_width, set_fullscreen};
 
+use super::widget::Toggle;
+
 // throttle FPS meter updates to every 0.2 seconds
 static mut LAST_FPS_UPDATE: f64 = 0.0;
 static mut DISPLAY_FPS: f32 = 0.0;
@@ -39,7 +41,16 @@ pub fn main_menu(ctx: &mut UiContext, state: &mut UiState) {
 }
 
 /// Settings menu: adjust game options
-pub fn settings_menu(ctx: &mut UiContext, state: &mut UiState) {
+pub fn settings_menu(
+    ctx: &mut UiContext,
+    state: &mut UiState,
+    delay: bool,
+    reconciliation: bool,
+    prediction: bool,
+    mut on_delay_change: impl FnMut() -> (),
+    mut on_reconciliation_change: impl FnMut() -> (),
+    mut on_prediction_change: impl FnMut() -> (),
+) {
     let area = Rect::new(0.0, 0.0, screen_width(), screen_height());
     let mut menu = VBox::new(20.0, 10.0);
     menu.begin(ctx, area);
@@ -47,16 +58,41 @@ pub fn settings_menu(ctx: &mut UiContext, state: &mut UiState) {
     let title_area = menu.item(ctx, vec2(300.0, 50.0));
     Label::new("Settings").ui(ctx, title_area);
 
-    // Example toggle fullscreen
     let fullscreen_area = menu.item(ctx, vec2(200.0, 50.0));
     if Button::new("Fullscreen mode").ui(ctx, fullscreen_area) == UiResponse::Clicked {
         set_fullscreen(true);
     }
 
-    // Back to previous menu
     let back_area = menu.item(ctx, vec2(200.0, 50.0));
     if Button::new("Back").ui(ctx, back_area) == UiResponse::Clicked {
         state.pop();
+    }
+
+    let reconciliation_toggle_area = menu.item(ctx, vec2(200.0, 50.0));
+    if Toggle::new("Reconciliation")
+        .with_state(reconciliation)
+        .ui(ctx, reconciliation_toggle_area)
+        == UiResponse::Clicked
+    {
+        on_reconciliation_change();
+    }
+
+    let prediction_toggle_area = menu.item(ctx, vec2(200.0, 50.0));
+    if Toggle::new("Prediction")
+        .with_state(prediction)
+        .ui(ctx, prediction_toggle_area)
+        == UiResponse::Clicked
+    {
+        on_prediction_change();
+    }
+
+    let delay_toggle_area = menu.item(ctx, vec2(200.0, 50.0));
+    if Toggle::new("1000ms delay")
+        .with_state(delay)
+        .ui(ctx, delay_toggle_area)
+        == UiResponse::Clicked
+    {
+        on_delay_change();
     }
 
     menu.end(ctx);
