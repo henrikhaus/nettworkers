@@ -87,8 +87,6 @@ impl Predictor {
         //     .map_or(600000, |c| c.client_timestamp.elapsed().as_micros() as u64);
         let dt_micros = 600000;
 
-        println!("{}", dt_micros);
-
         game_state.mutate(
             &self
                 .reconciliation_commands
