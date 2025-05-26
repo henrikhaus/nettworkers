@@ -42,13 +42,15 @@ impl Predictor {
             game_state.mutate(&[], dt_micros);
         }
 
-        self.unconfirmed_frames.push(ReconciliationFrame {
-            command: command_content,
-            frame_dt_micros: dt_micros,
-            sequence: self.sequence,
-        });
+        if self.active_reconciliation {
+            self.unconfirmed_frames.push(ReconciliationFrame {
+                command: command_content,
+                frame_dt_micros: dt_micros,
+                sequence: self.sequence,
+            });
 
-        self.sequence += 1;
+            self.sequence += 1;
+        }
     }
 
     pub fn reconciliation(&mut self, game_state: &mut GameState, server_sequence: u32) {
