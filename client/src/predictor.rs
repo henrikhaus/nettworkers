@@ -1,11 +1,10 @@
-use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
+use std::time::Instant;
 
 use shared::state::{CommandContent, GameState, PlayerStateCommand};
 
 pub struct ReconciliationCommand {
     command: CommandContent,
     sequence: u32,
-    client_timestamp: Instant,
 }
 
 pub struct Predictor {
@@ -13,9 +12,6 @@ pub struct Predictor {
     pub active_prediction: bool,
     pub active_reconciliation: bool,
     pub sequence: u32,
-    // Maybe not necessary
-    last_command_timestamp: Instant,
-    last_reconciliation: Instant,
 }
 
 impl Predictor {
@@ -25,8 +21,6 @@ impl Predictor {
             active_prediction: true,
             active_reconciliation: true,
             sequence: 0,
-            last_command_timestamp: Instant::now(),
-            last_reconciliation: Instant::now(),
         }
     }
 
@@ -57,11 +51,8 @@ impl Predictor {
                 self.reconciliation_commands.push(ReconciliationCommand {
                     command: command_content,
                     sequence: self.sequence,
-                    client_timestamp: Instant::now(),
                 });
                 self.sequence += 1;
-
-                self.last_command_timestamp = Instant::now();
             }
         } else {
             game_state.mutate(&[], dt_micros, Some(client_player_id));
@@ -82,11 +73,6 @@ impl Predictor {
         self.reconciliation_commands
             .retain(|c| c.sequence > server_sequence);
 
-        let dt_micros = match self.reconciliation_commands.first() {
-            Some(command) => command.client_timestamp.elapsed().as_micros() as u64,
-            None => server_delay * 2,
-        };
-
         let dt_micros = server_delay * 2;
 
         println!("dt_micros: {}", dt_micros);
@@ -101,7 +87,5 @@ impl Predictor {
             dt_micros,
             Some(client_player_id),
         );
-
-        self.last_reconciliation = Instant::now();
     }
 }
