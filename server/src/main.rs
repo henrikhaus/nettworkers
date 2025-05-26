@@ -50,7 +50,10 @@ impl Server {
             .unwrap_or_default()
             .as_micros() as u64;
 
-        let client_delay_micros = system_time_micro - player_state_command.client_timestamp_micros;
+        let client_delay_micros = player_state_command
+            .client_timestamp_micros
+            .max(system_time_micro)
+            - player_state_command.client_timestamp_micros;
         if !player_state_command.commands.is_empty() {
             if let Err(e) = self.command_sender.send(CommandContent {
                 player_id,
