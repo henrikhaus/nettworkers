@@ -175,9 +175,9 @@ impl Client {
                 true => None,
                 false => Some(PlayerStateCommand {
                     sequence: predictor.sequence,
-                    dt_micro: dt_micros,
+                    dt_micros,
                     commands,
-                    client_timestamp_micro: unix_timestamp_micro,
+                    client_timestamp_micros: unix_timestamp_micro,
                 }),
             };
 

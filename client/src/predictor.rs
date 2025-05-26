@@ -43,12 +43,16 @@ impl Predictor {
         }
 
         if let Some(command) = player_state_command {
+            let command_content = CommandContent {
+                player_id: client_player_id,
+                player_state_command: command.clone(),
+                client_delay_micros: 0,
+            };
             game_state.mutate(
-                &[(client_player_id, command.clone(), 0)],
+                &[command_content.clone()],
                 dt_micros,
                 Some(client_player_id),
             );
-            let command_content = (client_player_id, command.clone(), 0);
 
             if self.active_reconciliation {
                 self.reconciliation_commands.push(ReconciliationCommand {
@@ -77,10 +81,11 @@ impl Predictor {
         self.reconciliation_commands
             .retain(|c| c.sequence > server_sequence);
 
-        let dt_micros = self
-            .reconciliation_commands
-            .first()
-            .map_or(1000000, |c| c.client_timestamp.elapsed().as_micros() as u64);
+        // let dt_micros = self
+        //     .reconciliation_commands
+        //     .first()
+        //     .map_or(600000, |c| c.client_timestamp.elapsed().as_micros() as u64);
+        let dt_micros = 600000;
 
         println!("{}", dt_micros);
 

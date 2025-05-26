@@ -144,8 +144,8 @@ impl PlayerStateCommand {
             &generated::PlayerCommandsArgs {
                 sequence: self.sequence,
                 commands: Some(commands_vec),
-                dt_micro: self.dt_micro,
-                client_timestamp_micro: self.client_timestamp_micro,
+                dt_micro: self.dt_micros,
+                client_timestamp_micro: self.client_timestamp_micros,
             },
         )
     }
@@ -165,8 +165,8 @@ impl PlayerStateCommand {
         Self {
             sequence,
             commands,
-            dt_micro,
-            client_timestamp_micro,
+            dt_micros: dt_micro,
+            client_timestamp_micros: client_timestamp_micro,
         }
     }
 }

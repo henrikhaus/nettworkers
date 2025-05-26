@@ -1,15 +1,13 @@
-use std::{
-    collections::BinaryHeap,
-    time::{SystemTime, UNIX_EPOCH},
-};
+use std::time::{SystemTime, UNIX_EPOCH};
 
 use super::{CommandContent, GameState, PlayerState, physics::*};
 use crate::generated::PlayerCommand;
 
 use super::{JUMP_CD, JUMP_FORCE, PLAYER_ACCELERATION};
 
-struct ScheduledCommand {
-    execute_at: u64,
+#[derive(Debug, Clone)]
+pub struct ScheduledCommand {
+    execute_at_timestamp: u64,
     player_id: u32,
     client_dt: f32,
     command: PlayerCommand,
@@ -19,7 +17,7 @@ impl Eq for ScheduledCommand {}
 
 impl PartialEq for ScheduledCommand {
     fn eq(&self, other: &Self) -> bool {
-        self.execute_at == other.execute_at
+        self.execute_at_timestamp == other.execute_at_timestamp
     }
 }
 
@@ -31,9 +29,11 @@ impl PartialOrd for ScheduledCommand {
 
 impl Ord for ScheduledCommand {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        other.execute_at.cmp(&self.execute_at)
+        other.execute_at_timestamp.cmp(&self.execute_at_timestamp)
     }
 }
+
+const FIXED_DT_MICROS: u64 = 16000; // 16 ms
 
 impl GameState {
     pub fn mutate(
@@ -42,6 +42,7 @@ impl GameState {
         dt_micros: u64,
         client_player_id: Option<u32>,
     ) {
+        let dt_micros = self.cached_dt_micros + dt_micros;
         let end_tick = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .unwrap_or_default()
@@ -49,50 +50,57 @@ impl GameState {
 
         let start_tick = end_tick - dt_micros;
 
-        let mut scheduled_commands = BinaryHeap::new();
-
-        for (player_id, player_state_command, client_delay_micros) in commands {
-            let client_dt = (player_state_command.dt_micro / 1000) as f32;
+        for mutate_command in commands {
+            let client_dt = (mutate_command.player_state_command.dt_micros / 1000) as f32;
             // Get player, add to game state if not exists
 
             // Add commands to scheduled binary heap
-            for command in &player_state_command.commands {
-                let effect = ScheduledCommand {
-                    execute_at: start_tick
-                        .max(player_state_command.client_timestamp_micro + *client_delay_micros)
-                        - start_tick,
-                    player_id: *player_id,
+            for command in &mutate_command.player_state_command.commands {
+                let scheduled_command = ScheduledCommand {
+                    execute_at_timestamp: mutate_command
+                        .player_state_command
+                        .client_timestamp_micros
+                        + mutate_command.client_delay_micros,
+                    player_id: mutate_command.player_id,
                     client_dt,
                     command: *command,
                 };
 
-                // REMEBER TO ADD EFFECT TO QUEUE, MAKE IT MIN by exectue_at
-                // ALSO EXECUTE ALL EFFECT THAT HAVE TIME LESS THAN START TICK
-                // AND EXECUTE ALL EFFECTS THAT HAVE TIME MORE THAN END TICK AT THE END OF PHYSICS
-                scheduled_commands.push(effect);
+                self.scheduled_commands.push(scheduled_command);
             }
         }
 
         // Physics
         let mut accumulator = dt_micros;
-        let fixed_dt = 16000; // 16 ms
 
-        while accumulator > 0 {
-            let step = accumulator.min(fixed_dt);
+        while accumulator >= FIXED_DT_MICROS {
+            let step = accumulator.min(FIXED_DT_MICROS);
 
-            let execute_time = if step == accumulator {
-                u64::MAX
-            } else {
-                dt_micros - accumulator
-            };
+            // let execute_time = if step == accumulator {
+            //     u64::MAX
+            // } else {
+            //     dt_micros - accumulator
+            // };
+            let execute_time = SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .as_micros() as u64
+                - accumulator;
 
-            self.execute_commands(&mut scheduled_commands, execute_time);
+            self.execute_commands(execute_time);
 
             let dt = step as f32 / 1000000.0;
             physics(self, dt, client_player_id);
 
             accumulator -= step;
         }
+
+        // Execute remaining commands
+        while let Some(command) = self.scheduled_commands.pop() {
+            self.execute_scheduled_command(command);
+        }
+
+        self.cached_dt_micros = accumulator;
 
         // Collision
         // let player_forces = collision(players);
@@ -104,16 +112,13 @@ impl GameState {
         // }
     }
 
-    fn execute_commands(
-        &mut self,
-        scheduled_commands: &mut BinaryHeap<ScheduledCommand>,
-        execute_time: u64,
-    ) {
-        while let Some(scheduled_command) = scheduled_commands.pop() {
-            if scheduled_command.execute_at <= execute_time {
-                self.execute_scheduled_command(scheduled_command);
+    fn execute_commands(&mut self, execute_time: u64) {
+        while let Some(scheduled_command) = self.scheduled_commands.peek() {
+            if scheduled_command.execute_at_timestamp <= execute_time {
+                if let Some(scheduled_command) = self.scheduled_commands.pop() {
+                    self.execute_scheduled_command(scheduled_command);
+                }
             } else {
-                scheduled_commands.push(scheduled_command);
                 break;
             }
         }
