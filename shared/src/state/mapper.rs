@@ -1,9 +1,6 @@
 use crate::generated;
 use flatbuffers::{FlatBufferBuilder, WIPOffset, root};
-use std::{
-    collections::HashMap,
-    time::{SystemTime, UNIX_EPOCH},
-};
+use std::collections::HashMap;
 
 use super::{GameState, PlayerState, PlayerStateCommand, Vec2};
 

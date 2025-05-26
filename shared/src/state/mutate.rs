@@ -48,8 +48,6 @@ impl GameState {
             .unwrap_or_default()
             .as_micros() as u64;
 
-        let start_tick = end_tick - dt_micros;
-
         for mutate_command in commands {
             let client_dt = (mutate_command.player_state_command.dt_micros / 1000) as f32;
             // Get player, add to game state if not exists
