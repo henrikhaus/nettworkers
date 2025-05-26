@@ -1,4 +1,4 @@
-use std::time::{Instant, SystemTime, UNIX_EPOCH};
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use shared::state::{CommandContent, GameState, PlayerStateCommand};
 
@@ -14,7 +14,8 @@ pub struct Predictor {
     pub active_reconciliation: bool,
     pub sequence: u32,
     // Maybe not necessary
-    last_reconciliation_timestamp: u64,
+    last_command_timestamp: Instant,
+    last_reconciliation: Instant,
 }
 
 impl Predictor {
@@ -24,10 +25,8 @@ impl Predictor {
             active_prediction: true,
             active_reconciliation: true,
             sequence: 0,
-            last_reconciliation_timestamp: SystemTime::now()
-                .duration_since(UNIX_EPOCH)
-                .unwrap_or_default()
-                .as_micros() as u64,
+            last_command_timestamp: Instant::now(),
+            last_reconciliation: Instant::now(),
         }
     }
 
@@ -60,8 +59,9 @@ impl Predictor {
                     sequence: self.sequence,
                     client_timestamp: Instant::now(),
                 });
-
                 self.sequence += 1;
+
+                self.last_command_timestamp = Instant::now();
             }
         } else {
             game_state.mutate(&[], dt_micros, Some(client_player_id));
@@ -81,11 +81,17 @@ impl Predictor {
         self.reconciliation_commands
             .retain(|c| c.sequence > server_sequence);
 
-        // let dt_micros = self
-        //     .reconciliation_commands
-        //     .first()
-        //     .map_or(600000, |c| c.client_timestamp.elapsed().as_micros() as u64);
-        let dt_micros = 600000;
+        let dt_micros = match self.reconciliation_commands.first() {
+            Some(command) => command.client_timestamp.elapsed().as_micros() as u64,
+            None => {
+                let elapsed = self.last_command_timestamp.elapsed().as_micros() as u64;
+                self.last_command_timestamp +=
+                    Instant::now().duration_since(self.last_reconciliation);
+                elapsed
+            }
+        };
+
+        // let dt_micros = 600000;
 
         game_state.mutate(
             &self
@@ -96,5 +102,7 @@ impl Predictor {
             dt_micros,
             Some(client_player_id),
         );
+
+        self.last_reconciliation = Instant::now();
     }
 }
