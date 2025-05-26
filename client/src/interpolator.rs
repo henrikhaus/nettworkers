@@ -24,6 +24,10 @@ impl Interpolator {
     }
 
     pub fn set_new_state(&mut self, new_state: GameState) {
+        if !self.active {
+            return;
+        }
+
         self.old_server_state = self.new_server_state.clone();
         self.new_server_state = new_state;
         self.interpolation_time = Instant::now().duration_since(self.received_new_state_at);
