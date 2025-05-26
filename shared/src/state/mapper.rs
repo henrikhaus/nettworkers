@@ -1,8 +1,11 @@
 use crate::generated;
 use flatbuffers::{FlatBufferBuilder, WIPOffset, root};
-use std::collections::HashMap;
+use std::{
+    collections::HashMap,
+    time::{SystemTime, UNIX_EPOCH},
+};
 
-use super::{GameState, PlayerState, PlayerStateCommand, SpawnPoint, Vec2};
+use super::{GameState, PlayerState, PlayerStateCommand, Vec2};
 
 const SCENE_NAME: &str = "scene_3";
 
@@ -12,6 +15,7 @@ impl GameState {
         builder: &'a mut FlatBufferBuilder,
         client_player_id: u32,
         sequence: u32,
+        server_timestamp: u64,
     ) -> &'a [u8] {
         let client_player = self
             .players
@@ -33,6 +37,7 @@ impl GameState {
                 players: Some(players_vec),
                 client_player: Some(client_player_offset),
                 sequence,
+                server_timestamp: server_timestamp,
             },
         );
         builder.finish(players_list, None);

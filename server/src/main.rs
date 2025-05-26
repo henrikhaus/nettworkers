@@ -82,6 +82,10 @@ impl Server {
     }
 
     fn broadcast_state(&self, game_state: &GameState, sequence: HashMap<u32, u32>) {
+        let server_timestamp = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_micros() as u64;
         // Send data to client
         for (ip, player_id) in self.read_ip_id() {
             let mut builder = FlatBufferBuilder::with_capacity(2048);
@@ -89,6 +93,7 @@ impl Server {
                 &mut builder,
                 player_id,
                 sequence.get(&player_id).copied().unwrap_or(0),
+                server_timestamp,
             );
             if let Err(e) = self.socket.send_to(bytes, ip) {
                 eprintln!("Failed to send data to client: {}", e);

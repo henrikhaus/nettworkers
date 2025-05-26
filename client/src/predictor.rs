@@ -73,6 +73,7 @@ impl Predictor {
         game_state: &mut GameState,
         server_sequence: u32,
         client_player_id: u32,
+        server_delay: u64,
     ) {
         if !self.active_reconciliation {
             return;
@@ -87,12 +88,9 @@ impl Predictor {
                 let elapsed = self.last_command_timestamp.elapsed().as_micros() as u64;
                 self.last_command_timestamp +=
                     Instant::now().duration_since(self.last_reconciliation);
-                // elapsed
-                600000
+                elapsed
             }
         };
-
-        // let dt_micros = 0;
 
         println!("dt_micros: {}", dt_micros);
 

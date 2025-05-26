@@ -646,6 +646,7 @@ impl<'a> GameState<'a> {
   pub const VT_CLIENT_PLAYER: flatbuffers::VOffsetT = 4;
   pub const VT_PLAYERS: flatbuffers::VOffsetT = 6;
   pub const VT_SEQUENCE: flatbuffers::VOffsetT = 8;
+  pub const VT_SERVER_TIMESTAMP: flatbuffers::VOffsetT = 10;
 
   #[inline]
   pub unsafe fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
@@ -657,6 +658,7 @@ impl<'a> GameState<'a> {
     args: &'args GameStateArgs<'args>
   ) -> flatbuffers::WIPOffset<GameState<'bldr>> {
     let mut builder = GameStateBuilder::new(_fbb);
+    builder.add_server_timestamp(args.server_timestamp);
     builder.add_sequence(args.sequence);
     if let Some(x) = args.players { builder.add_players(x); }
     if let Some(x) = args.client_player { builder.add_client_player(x); }
@@ -685,6 +687,13 @@ impl<'a> GameState<'a> {
     // which contains a valid value in this slot
     unsafe { self._tab.get::<u32>(GameState::VT_SEQUENCE, Some(0)).unwrap()}
   }
+  #[inline]
+  pub fn server_timestamp(&self) -> u64 {
+    // Safety:
+    // Created from valid Table for this object
+    // which contains a valid value in this slot
+    unsafe { self._tab.get::<u64>(GameState::VT_SERVER_TIMESTAMP, Some(0)).unwrap()}
+  }
 }
 
 impl flatbuffers::Verifiable for GameState<'_> {
@@ -697,6 +706,7 @@ impl flatbuffers::Verifiable for GameState<'_> {
      .visit_field::<flatbuffers::ForwardsUOffset<ClientPlayer>>("client_player", Self::VT_CLIENT_PLAYER, false)?
      .visit_field::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'_, flatbuffers::ForwardsUOffset<Player>>>>("players", Self::VT_PLAYERS, false)?
      .visit_field::<u32>("sequence", Self::VT_SEQUENCE, false)?
+     .visit_field::<u64>("server_timestamp", Self::VT_SERVER_TIMESTAMP, false)?
      .finish();
     Ok(())
   }
@@ -705,6 +715,7 @@ pub struct GameStateArgs<'a> {
     pub client_player: Option<flatbuffers::WIPOffset<ClientPlayer<'a>>>,
     pub players: Option<flatbuffers::WIPOffset<flatbuffers::Vector<'a, flatbuffers::ForwardsUOffset<Player<'a>>>>>,
     pub sequence: u32,
+    pub server_timestamp: u64,
 }
 impl<'a> Default for GameStateArgs<'a> {
   #[inline]
@@ -713,6 +724,7 @@ impl<'a> Default for GameStateArgs<'a> {
       client_player: None,
       players: None,
       sequence: 0,
+      server_timestamp: 0,
     }
   }
 }
@@ -735,6 +747,10 @@ impl<'a: 'b, 'b, A: flatbuffers::Allocator + 'a> GameStateBuilder<'a, 'b, A> {
     self.fbb_.push_slot::<u32>(GameState::VT_SEQUENCE, sequence, 0);
   }
   #[inline]
+  pub fn add_server_timestamp(&mut self, server_timestamp: u64) {
+    self.fbb_.push_slot::<u64>(GameState::VT_SERVER_TIMESTAMP, server_timestamp, 0);
+  }
+  #[inline]
   pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a, A>) -> GameStateBuilder<'a, 'b, A> {
     let start = _fbb.start_table();
     GameStateBuilder {
@@ -755,6 +771,7 @@ impl core::fmt::Debug for GameState<'_> {
       ds.field("client_player", &self.client_player());
       ds.field("players", &self.players());
       ds.field("sequence", &self.sequence());
+      ds.field("server_timestamp", &self.server_timestamp());
       ds.finish()
   }
 }

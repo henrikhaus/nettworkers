@@ -73,7 +73,15 @@ fn test_client_server_communication() {
                 );
 
                 // Serialize and send back
-                let response = game_state.serialize(&mut builder, 1, 0);
+                let response = game_state.serialize(
+                    &mut builder,
+                    1,
+                    0,
+                    SystemTime::now()
+                        .duration_since(UNIX_EPOCH)
+                        .unwrap_or_default()
+                        .as_micros() as u64,
+                );
                 println!("Serialized response is {} bytes", response.len());
                 match server_socket.send_to(response, src) {
                     Ok(sent) => println!("Server sent {} bytes", sent),
